@@ -3,8 +3,20 @@
 make venv first using requirements.txt:
 
 <br/>
-steps: 
+Steps: 
 
-`python -m venv venv` <br>
-`venv/Scripts/activate` <br>
-`pip install -r requirements.txt`
+```shell
+python -m venv venv
+venv/Scripts/activate
+pip install -r requirements.txt
+```
+
+
+<br>
+<br>
+
+## Run Server:
+```shell
+cd InfoSecBackend
+python manage.py runserver
+```
