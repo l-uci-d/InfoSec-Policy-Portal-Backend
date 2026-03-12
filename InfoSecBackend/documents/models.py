@@ -1,0 +1,30 @@
+from django.db import models
+
+# TODO: author and reviewer fields
+# Create your models here.
+class Document(models.Model):
+    title = models.CharField(max_length=255)
+    details = models.TextField(blank=True)
+    pdf_file = models.FileField(upload_to='documents/pdfs/')
+    # no author or reviewer for now until login is done
+    # authoredBy = models.ForeignKey('login.User', related_name='authored_documents', on_delete=models.CASCADE)
+    # reviewedBy = models.ForeignKey('login.User', related_name='authored_documents', on_delete=models.CASCADE)
+    lastReviewed = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+    
+class Section(models.Model):
+    parent = models.ForeignKey(Document, related_name='sections', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.parent.title} - {self.title}"
+
+class SubSection(models.Model):
+    parent = models.ForeignKey(Section, related_name='subsections', on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    content = models.TextField(blank=True)
+    def __str__(self):
+        return f"{self.parent.parent.title} - {self.parent.title} - {self.title}"

@@ -14,6 +14,9 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+MEDIA_URL = '/files/'
+MEDIA_ROOT = BASE_DIR / 'files'
+
 
 
 # Quick-start development settings - unsuitable for production
@@ -43,6 +46,7 @@ INSTALLED_APPS = [
     "notifications"    
     ,"login"
     , "audit_log"
+    , "documents"
 ]
 
 MIDDLEWARE = [
