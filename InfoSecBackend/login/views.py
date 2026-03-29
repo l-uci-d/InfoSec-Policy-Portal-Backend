@@ -197,3 +197,91 @@ def check_password(request):
             }, status=status.HTTP_401_UNAUTHORIZED)
         
         return JsonResponse({"success": True})
+
+
+class RegisterView(APIView):
+    def post(self, request):
+        first_name = request.data.get("first_name") or ""
+        last_name = request.data.get("last_name") or ""
+        email = (request.data.get("email") or "").strip().lower()
+        password = request.data.get("password") or ""
+        confirm = request.data.get("confirm_password") or ""
+
+        ip_address = get_client_ip(request)
+
+        if not first_name or not last_name or not email or not password:
+            return Response({"success": False, "message": "Missing fields"}, status=400)
+
+        if password != confirm:
+            return Response({"success": False, "message": "Passwords do not match"}, status=400)
+
+        # must contain at least 1 letter and 1 digit
+        import re
+        if not re.fullmatch(r"(?=.*[A-Za-z])(?=.*\d).{8,}", password):
+            return Response(
+                {"success": False, "message": "Password must be at least 8 characters and include letters and numbers"},
+                status=400
+            )
+
+        # check if email already exists (same table your login uses) :contentReference[oaicite:4]{index=4}
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM admin.users WHERE email = %s LIMIT 1", [email])
+            if cursor.fetchone():
+                return Response({"success": False, "message": "Email already registered"}, status=409)
+
+
+        role_id = "Staff"
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT role_id FROM admin.roles_permission WHERE role_name = %s LIMIT 1",
+                ["Staff"],
+            )
+            row = cursor.fetchone()
+            if row:
+                role_id = row[0]
+
+
+        # Insert user and hash password with pgcrypto (same pattern as reset_password) :contentReference[oaicite:5]{index=5}
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO admin.users
+                  ( first_name, last_name, email, password, status, type, role_id)
+                VALUES
+                  ( %s, %s, %s, crypt(%s, gen_salt('bf', 6)), 'Active', 'User', %s)
+                RETURNING user_id, first_name, last_name, email, status, type, role_id;
+                """,
+                [first_name, last_name, email, password, role_id],
+            )
+            new_row = cursor.fetchone()
+            cols = [c[0] for c in cursor.description]
+            user_data = dict(zip(cols, new_row))
+
+        if user_data.get("role_id"):
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT role_id, role_name, description, permissions, access_level
+                    FROM admin.roles_permission
+                    WHERE role_id = %s
+                    """,
+                    [user_data["role_id"]],
+                )
+                role_row = cursor.fetchone()
+                if role_row:
+                    role_cols = [c[0] for c in cursor.description]
+                    user_data["role"] = dict(zip(role_cols, role_row))
+
+        # audit log (optional, but matches your style)
+        log_id = f"LOG-{uuid.uuid4().hex[:8].upper()}"
+        AuditLog.objects.create(
+            log_id=log_id,
+            user_id=user_data["user_id"],
+            action="User registered",
+            ip_address=ip_address,
+        )
+
+        return Response(
+            {"success": True, "message": "Registration successful", "data": user_data},
+            status=status.HTTP_201_CREATED,
+        )
