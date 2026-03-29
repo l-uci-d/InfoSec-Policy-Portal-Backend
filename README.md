@@ -72,3 +72,21 @@ you should see this as the text cursor: <br>
 ```
 
 <li> you can now run sql queries here (SELECT, CREATE, etc)
+
+
+<br>
+<br>
+
+## After this set up, you can use these credentials in Frontend App:
+<li> 
+
+### <u> Admin</u> <br>
+<b>Email </b>: juan@gmail.com <br>
+<b>Password </b>: 123
+<br><br>
+
+<li> 
+
+### <u> Employee/Staff</u> <br>
+<b>Email </b>: employee@gmail.com <br>
+<b>Password </b>: 123
