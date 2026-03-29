@@ -25,8 +25,14 @@ SECRET_KEY = 'django-insecure-#+e^6#(xnkygth_o+24a&!9!&i29p=+b2yub_bl=_bhw6mxh*0
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://*",
+    "https://*",
+    "http://localhost:5173"
+]
 
 # Application definition
 
@@ -89,11 +95,16 @@ WSGI_APPLICATION = 'InfoSecBackend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+import os
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+  "default": {
+    "ENGINE": "django.db.backends.postgresql",
+    "NAME": "infosec_portal",
+    "USER": "infosec_app",
+    "PASSWORD": "admin123",
+    "HOST": "127.0.0.1",
+    "PORT": "5432",
+  }
 }
 
 
