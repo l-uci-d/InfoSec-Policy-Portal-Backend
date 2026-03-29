@@ -1,7 +1,9 @@
 from .serializers import DocumentSerializer
 from .models import Document
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 from django.http import FileResponse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.conf import settings
@@ -11,15 +13,22 @@ import os
 
 @api_view(['GET'])
 def get_documents(request):
-    # add request after for specific documents
-    print("(debug) test")
     documents = Document.objects.all()
-    serializer = DocumentSerializer(documents, many=True)
+    serializer = DocumentSerializer(instance=documents, many=True)
     print("(debug) documents: ")
     print(documents)
     print("(debug) serializer: ")
     print(serializer.data)
-    return Response(serializer.data)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def create_document(request):
+    doc_serializer = DocumentSerializer(data=request.data)
+    if doc_serializer.is_valid():
+        doc_serializer.save()
+        return Response(doc_serializer.data, status=status.HTTP_201_CREATED)
+
+    return Response(doc_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @xframe_options_exempt
 @api_view(['GET'])
