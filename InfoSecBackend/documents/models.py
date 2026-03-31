@@ -10,7 +10,7 @@ class Document(models.Model):
     # authoredBy = models.ForeignKey('login.User', related_name='authored_documents', on_delete=models.CASCADE)
     # reviewedBy = models.ForeignKey('login.User', related_name='authored_documents', on_delete=models.CASCADE)
     lastReviewed = models.DateTimeField(auto_now_add=True)
-    lastUpdated = models.DateTimeField(auto_now_add=True)
+    lastUpdated = models.DateTimeField(auto_now=True)
     tags = models.JSONField(default=list, blank=True)
 
     def __str__(self):
