@@ -51,7 +51,7 @@ psql --version
 <li> if there's no errors, you can now run this command on the dir with psql_infosec_db.sql:
 
 ```shell
-psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -v  -f .\psql_infosec_db.sql
+psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -f .\psql_infosec_db.sql
 ```
 <i> you will be prompted for the superuser password </i>
 
