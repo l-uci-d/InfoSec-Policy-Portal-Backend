@@ -33,7 +33,7 @@ def create_update_document(request):
     
     #handle Document
     new_doc = None
-    if request.data.get('id')[:3] == 'new':
+    if str(request.data.get('id'))[:3] == 'new':
         new_doc = Document()
     else:
         new_doc = Document.objects.get(id=int(request.data.get('id')))
@@ -49,7 +49,7 @@ def create_update_document(request):
     #handle Section
     for sect in sections:
         new_sect = None
-        if sect.get('id')[:3] == 'new':
+        if str(sect.get('id'))[:3] == 'new':
             new_sect = Section()
         else:
             new_sect = Section.objects.get(id=int(sect.get('id')))
@@ -62,7 +62,7 @@ def create_update_document(request):
         #handle SubSection
         for subsect in sect.get('subsections'):
             new_subsect = None
-            if subsect.get('id')[:3] == 'new':
+            if str(subsect.get('id'))[:3] == 'new':
                 new_subsect = SubSection()
             else:
                 new_subsect = SubSection.objects.get(id=int(subsect.get('id')))
