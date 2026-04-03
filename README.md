@@ -18,6 +18,7 @@ pip install -r requirements.txt
 ## Add Users:
 ```shell
 cd InfoSecBackend
+python manage.py migrate
 python manage.py create_users
 ```
 
