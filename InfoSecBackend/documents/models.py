@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 # TODO: author and reviewer fields
 # Create your models here.
@@ -7,8 +8,8 @@ class Document(models.Model):
     details = models.TextField(blank=True)
     pdf_file = models.FileField(upload_to='documents/pdfs/')
     # no author or reviewer for now until login is done
-    # authoredBy = models.ForeignKey('login.User', related_name='authored_documents', on_delete=models.CASCADE)
-    # reviewedBy = models.ForeignKey('login.User', related_name='authored_documents', on_delete=models.CASCADE)
+    authoredBy = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='authored_documents', on_delete=models.CASCADE, null=True)
+    reviewedBy = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='reviewed_documents', on_delete=models.CASCADE, null=True)
     lastReviewed = models.DateTimeField(auto_now_add=True)
     lastUpdated = models.DateTimeField(auto_now=True)
     tags = models.JSONField(default=list, blank=True)
