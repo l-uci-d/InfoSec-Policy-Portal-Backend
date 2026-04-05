@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from django.http import FileResponse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.conf import settings
+from django.contrib.auth import get_user_model
 import json
 
 import os
@@ -22,10 +23,17 @@ def get_documents(request):
     print(serializer.data)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def get_users(request):
+    users = get_user_model().objects.values("id", "first_name", "last_name")
+    return Response(users)
+
 @api_view(['POST'])
 def create_update_document(request):
     print("(debug) request.data:")
     print(request.data)
+
+    User = get_user_model()
 
     sections = json.loads(request.data.get('sections'))
     tags = json.loads(request.data.get('tags'))
@@ -40,6 +48,8 @@ def create_update_document(request):
 
     new_doc.title = request.data.get('title')
     new_doc.details = request.data.get('details')
+    new_doc.authoredBy = User.objects.get(id=int(request.data.get('authoredBy')))
+    new_doc.reviewedBy = User.objects.get(id=int(request.data.get('reviewedBy')))
     if pdf_file:
         new_doc.pdf_file = pdf_file
     new_doc.lastReviewed = request.data.get('lastReviewed')
