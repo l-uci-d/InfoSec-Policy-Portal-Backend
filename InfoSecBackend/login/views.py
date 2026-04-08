@@ -1,8 +1,11 @@
+import math
+
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser
+from rest_framework.pagination import PageNumberPagination
 from audit_log.models import AuditLog
 from audit_log.middleware import get_client_ip
 import uuid
@@ -166,16 +169,29 @@ class ResetPasswordView(APIView):
         user.save(update_fields=["password"])
         return Response({"success": True})
 
+class UserPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class GetAllUsersView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
         users = User.objects.prefetch_related("groups").all().order_by("id")
-        payload = [build_user_access_payload(user) for user in users]
+
+        paginator = UserPagination()
+        paginated_users = paginator.paginate_queryset(users, request)
+
+        payload = [build_user_access_payload(user) for user in paginated_users]
+
         serializer = UserAccessListItemSerializer(payload, many=True)
+
+        # para sa frontend
+        total_pages = math.ceil(paginator.page.paginator.count / paginator.page_size)
 
         return Response({
             "success": True,
-            "data": serializer.data
+            "data": serializer.data,
+            "total_pages": total_pages
         }, status=status.HTTP_200_OK)
