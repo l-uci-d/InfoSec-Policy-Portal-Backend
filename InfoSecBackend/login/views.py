@@ -2,15 +2,17 @@ from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAdminUser
 from audit_log.models import AuditLog
 from audit_log.middleware import get_client_ip
 import uuid
 import re
 from django.contrib.auth.models import Group
+from .serializers import UserAccessListItemSerializer
 
 ROLE_TO_PERMS = {
     "Admin": "All",
-    "Staff": "Policies,Documents",
+    "Staff": "Policies, Documents",
 }
 
 def build_user_payload(user):
@@ -32,6 +34,17 @@ def build_user_payload(user):
             "role_name": role_name,
             "permissions": ROLE_TO_PERMS.get(role_name, ""),
         },
+    }
+
+
+def build_user_access_payload(user):
+    return {
+        "user_id": str(user.pk),
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "roles": list(user.groups.values_list("name", flat=True)),
+        "last_login": user.last_login,
     }
 
 User = get_user_model()
@@ -152,3 +165,17 @@ class ResetPasswordView(APIView):
         user.set_password(new_password) 
         user.save(update_fields=["password"])
         return Response({"success": True})
+
+
+class GetAllUsersView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        users = User.objects.prefetch_related("groups").all().order_by("id")
+        payload = [build_user_access_payload(user) for user in users]
+        serializer = UserAccessListItemSerializer(payload, many=True)
+
+        return Response({
+            "success": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)

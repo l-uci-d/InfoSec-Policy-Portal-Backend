@@ -30,3 +30,24 @@ class LoginResponseSerializer(serializers.ModelSerializer):
     #     if obj.role:
     #         return obj.role.access_level
     #     return None
+
+class UserSerializer(serializers.ModelSerializer):
+    role = RoleSerializer(read_only = True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "role"
+        ]
+
+
+class UserAccessListItemSerializer(serializers.Serializer):
+    user_id = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    email = serializers.EmailField()
+    roles = serializers.ListField(child=serializers.CharField())
