@@ -51,3 +51,9 @@ class UserAccessListItemSerializer(serializers.Serializer):
     last_name = serializers.CharField()
     email = serializers.EmailField()
     roles = serializers.ListField(child=serializers.CharField())
+
+
+class RoleListItemSerializer(serializers.Serializer):
+    role_id = serializers.IntegerField()
+    role_name = serializers.CharField()
+    user_count = serializers.IntegerField()

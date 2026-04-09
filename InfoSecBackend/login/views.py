@@ -1,4 +1,5 @@
 import math
+from django.db.models import Count
 
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
@@ -11,7 +12,7 @@ from audit_log.middleware import get_client_ip
 import uuid
 import re
 from django.contrib.auth.models import Group
-from .serializers import UserAccessListItemSerializer
+from .serializers import UserAccessListItemSerializer, RoleListItemSerializer
 
 ROLE_TO_PERMS = {
     "Admin": "All",
@@ -194,4 +195,25 @@ class GetAllUsersView(APIView):
             "success": True,
             "data": serializer.data,
             "total_pages": total_pages
+        }, status=status.HTTP_200_OK)
+
+
+class GetAllRolesView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        roles = Group.objects.annotate(user_count=Count("user")).order_by("name")
+        payload = [
+            {
+                "role_id": role.id,
+                "role_name": role.name,
+                "user_count": role.user_count,
+            }
+            for role in roles
+        ]
+        serializer = RoleListItemSerializer(payload, many=True)
+
+        return Response({
+            "success": True,
+            "data": serializer.data,
         }, status=status.HTTP_200_OK)

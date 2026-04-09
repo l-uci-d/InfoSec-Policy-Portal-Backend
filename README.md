@@ -24,6 +24,7 @@ python manage.py create_users
 
 ## Run Server:
 ```shell
+cd InfoSecBackend
 python manage.py runserver
 ```
 <br>
