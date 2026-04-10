@@ -422,7 +422,7 @@ class UpdateRoleModulesView(APIView):
         role = RolesPermission.objects.filter(role_name=role_name).first()
         if role:
             role.permissions = ", ".join(modules)
-            role.save(update_fields=["permissions", "updated_at"])
+            role.save(update_fields=["permissions"])
         else:
             role = RolesPermission.objects.create(
                 role_id=f"ROLE-{uuid.uuid4().hex[:10].upper()}",
