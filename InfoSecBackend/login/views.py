@@ -19,6 +19,7 @@ from .serializers import (
     RoleListItemSerializer,
     RoleCreateRequestSerializer,
     RoleDetailSerializer,
+    RoleModulesUpdateRequestSerializer,
     UserRoleBulkUpdateRequestSerializer,
     UserRoleUpdateResultSerializer,
 )
@@ -30,7 +31,7 @@ ROLE_TO_MODULES = {
 
 DEFAULT_ROLE_NAME = "Staff"
 ALL_MODULES_KEY = "All"
-ADMIN_OVERRIDE_MODULE = "UserManagement"
+ADMIN_OVERRIDE_MODULE = "UserManagement" # if in role: {modules}, then considered as admin
 APP_MODULES = ["Policies", "Documents", "UserManagement"]
 
 
@@ -394,6 +395,47 @@ class CreateRoleView(APIView):
             "success": True,
             "data": serializer.data,
         }, status=status.HTTP_201_CREATED)
+
+
+class UpdateRoleModulesView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, role_name):
+        request_serializer = RoleModulesUpdateRequestSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+
+        modules = normalize_module_names(request_serializer.validated_data["modules"])
+        if not modules:
+            return Response({
+                "success": False,
+                "message": "At least one valid module is required",
+                "available_modules": APP_MODULES,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        group = Group.objects.filter(name=role_name).first()
+        if not group:
+            return Response({
+                "success": False,
+                "message": "Role not found",
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        role = RolesPermission.objects.filter(role_name=role_name).first()
+        if role:
+            role.permissions = ", ".join(modules)
+            role.save(update_fields=["permissions", "updated_at"])
+        else:
+            role = RolesPermission.objects.create(
+                role_id=f"ROLE-{uuid.uuid4().hex[:10].upper()}",
+                role_name=role_name,
+                permissions=", ".join(modules),
+            )
+
+        payload = build_role_detail_payload(role_name, role.role_id)
+        serializer = RoleDetailSerializer(payload)
+        return Response({
+            "success": True,
+            "data": serializer.data,
+        }, status=status.HTTP_200_OK)
 
 
 class UpdateUserRolesView(APIView):

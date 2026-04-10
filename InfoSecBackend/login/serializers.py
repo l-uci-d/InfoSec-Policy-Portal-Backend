@@ -84,6 +84,10 @@ class RoleCreateRequestSerializer(serializers.Serializer):
     modules = serializers.ListField(child=serializers.CharField(), allow_empty=False)
 
 
+class RoleModulesUpdateRequestSerializer(serializers.Serializer):
+    modules = serializers.ListField(child=serializers.CharField(), allow_empty=False)
+
+
 class RoleDetailSerializer(serializers.Serializer):
     role_id = serializers.CharField()
     role_name = serializers.CharField()
