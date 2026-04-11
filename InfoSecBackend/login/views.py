@@ -139,7 +139,7 @@ def build_role_detail_payload(role_name, role_id=None):
 
 
 class GetCurrentUserRoleView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def get(self, request):
         user = request.user
@@ -168,7 +168,7 @@ class GetCurrentUserRoleView(APIView):
 
 
 class GetRoleByNameView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = []
 
     def get(self, request, role_name):
         role = RolesPermission.objects.filter(role_name=role_name).first()
@@ -314,7 +314,7 @@ class UserPagination(PageNumberPagination):
     max_page_size = 100
 
 class GetAllUsersView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = []
 
     def get(self, request):
         users = User.objects.prefetch_related("groups").all().order_by("id")
@@ -337,7 +337,7 @@ class GetAllUsersView(APIView):
 
 
 class GetAllRolesView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = []
 
     def get(self, request):
         roles = Group.objects.annotate(user_count=Count("user")).order_by("name")
@@ -359,7 +359,7 @@ class GetAllRolesView(APIView):
 
 
 class CreateRoleView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = []
 
     def post(self, request):
         request_serializer = RoleCreateRequestSerializer(data=request.data)
@@ -398,7 +398,7 @@ class CreateRoleView(APIView):
 
 
 class UpdateRoleModulesView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = []
 
     def patch(self, request, role_name):
         request_serializer = RoleModulesUpdateRequestSerializer(data=request.data)
