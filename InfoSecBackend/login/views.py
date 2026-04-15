@@ -32,7 +32,7 @@ ROLE_TO_MODULES = {
 DEFAULT_ROLE_NAME = "Staff"
 ALL_MODULES_KEY = "All"
 ADMIN_OVERRIDE_MODULE = "UserManagement" # if in role: {modules}, then considered as admin
-APP_MODULES = ["Policies", "Documents", "UserManagement"]
+APP_MODULES = ["Home", "Documents", "Policies", "RecentNews", "Others","UserManagement"]
 
 
 def normalize_module_names(module_names):
@@ -47,9 +47,8 @@ def normalize_module_names(module_names):
 
 
 def get_custom_role_modules(role_name):
-    try:
-        role = RolesPermission.objects.get(role_name=role_name)
-    except RolesPermission.DoesNotExist:
+    role = RolesPermission.objects.filter(role_name=role_name).order_by("role_id").first()
+    if not role:
         return None
 
     modules = role.get_modules_list()
@@ -175,13 +174,16 @@ class GetRoleByNameView(APIView):
         if role:
             payload = build_role_detail_payload(role.role_name, role.role_id)
         else:
+            group = Group.objects.filter(name=role_name).first()
             modules = get_modules_for_role(role_name)
-            if not modules:
+
+            if not group and not modules:
                 return Response({
                     "success": False,
                     "message": "Role not found",
                 }, status=status.HTTP_404_NOT_FOUND)
-            payload = build_role_detail_payload(role_name)
+
+            payload = build_role_detail_payload(role_name, group.id if group else None)
 
         serializer = RoleDetailSerializer(payload)
         return Response({
@@ -383,9 +385,10 @@ class CreateRoleView(APIView):
 
         group = Group.objects.create(name=role_name)
         role = RolesPermission.objects.create(
-            role_id=f"ROLE-{uuid.uuid4().hex[:10].upper()}",
+            role_id=str(uuid.uuid4()),
             role_name=role_name,
             permissions=", ".join(modules),
+            access_level=0,
         )
 
         payload = build_role_detail_payload(group.name, role.role_id)
@@ -425,9 +428,10 @@ class UpdateRoleModulesView(APIView):
             role.save(update_fields=["permissions"])
         else:
             role = RolesPermission.objects.create(
-                role_id=f"ROLE-{uuid.uuid4().hex[:10].upper()}",
+                role_id=str(uuid.uuid4()),
                 role_name=role_name,
                 permissions=", ".join(modules),
+                access_level=0,
             )
 
         payload = build_role_detail_payload(role_name, role.role_id)
