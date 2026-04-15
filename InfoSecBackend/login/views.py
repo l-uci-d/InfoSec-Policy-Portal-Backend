@@ -138,7 +138,7 @@ def build_role_detail_payload(role_name, role_id=None):
 
 
 class GetCurrentUserRoleView(APIView):
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
