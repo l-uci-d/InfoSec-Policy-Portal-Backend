@@ -7,6 +7,7 @@ from .views import (
     GetAllRolesView,
     CreateRoleView,
     GetRoleByNameView,
+    GetRolePermissionsView,
     UpdateRoleModulesView,
     GetCurrentUserRoleView,
     UpdateUserRolesView,
@@ -21,6 +22,7 @@ urlpatterns = [
     path("roles/create/", CreateRoleView.as_view(), name="create_role"),
     path("roles/<str:role_name>/", GetRoleByNameView.as_view(), name="get_role_by_name"),
     path("roles/<str:role_name>/modules/", UpdateRoleModulesView.as_view(), name="update_role_modules"),
+    path("roles/<str:role_name>/permissions/", GetRolePermissionsView.as_view(), name="get_role_permissions"),
     path("users/me/role/", GetCurrentUserRoleView.as_view(), name="get_current_user_role"),
     path("users/roles/", UpdateUserRolesView.as_view(), name="update_user_roles"),
 ]

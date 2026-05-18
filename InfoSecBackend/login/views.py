@@ -13,6 +13,7 @@ from audit_log.middleware import get_client_ip
 import uuid
 import re
 from django.contrib.auth.models import Group
+from django.contrib.auth.models import Permission
 from .models import RolesPermission
 from .serializers import (
     UserAccessListItemSerializer,
@@ -190,6 +191,36 @@ class GetRoleByNameView(APIView):
             "success": True,
             "data": serializer.data,
         }, status=status.HTTP_200_OK)
+
+
+class GetRolePermissionsView(APIView):
+
+    def get(self, request, role_name):
+        # modules come from custom RolesPermission or default mapping
+        modules = get_modules_for_role(role_name)
+
+        # gather django auth permissions if a Group exists with this name
+        django_perms = []
+        group = Group.objects.filter(name=role_name).first()
+        if group:
+            perms = group.permissions.select_related('content_type').all()
+            django_perms = [
+                {
+                    "id": p.id,
+                    "codename": p.codename,
+                    "name": p.name,
+                    "content_type": f"{p.content_type.app_label}.{p.content_type.model}",
+                }
+                for p in perms
+            ]
+
+        payload = {
+            "role_name": role_name,
+            "modules": modules,
+            "django_permissions": django_perms,
+        }
+
+        return Response({"success": True, "data": payload}, status=status.HTTP_200_OK)
 
 User = get_user_model()
 

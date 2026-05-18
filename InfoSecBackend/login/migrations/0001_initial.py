@@ -12,36 +12,72 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='RolesPermission',
-            fields=[
-                ('role_id', models.CharField(max_length=255, primary_key=True, serialize=False)),
-                ('role_name', models.CharField(max_length=255)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('permissions', models.TextField(blank=True, null=True)),
-                ('access_level', models.CharField(choices=[('Read-Only', 'Read Only'), ('Full Access', 'Full Access')], default='Full Access', max_length=20)),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS admin.roles_permission (
+                            role_id VARCHAR(255) PRIMARY KEY,
+                            role_name VARCHAR(255) NOT NULL,
+                            description TEXT NULL,
+                            permissions TEXT NULL,
+                            access_level VARCHAR(20) NOT NULL DEFAULT 'Full Access'
+                        )
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS admin.roles_permission CASCADE",
+                ),
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS admin.users (
+                            user_id VARCHAR(255) PRIMARY KEY,
+                            employee_id VARCHAR(255) NULL,
+                            first_name VARCHAR(255) NOT NULL,
+                            last_name VARCHAR(255) NOT NULL,
+                            email VARCHAR(255) NOT NULL UNIQUE,
+                            password VARCHAR(255) NOT NULL,
+                            status VARCHAR(10) NOT NULL DEFAULT 'Active',
+                            type VARCHAR(10) NOT NULL DEFAULT 'Employee',
+                            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                            role_id VARCHAR(255) NULL REFERENCES admin.roles_permission(role_id) ON DELETE CASCADE
+                        )
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS admin.users CASCADE",
+                ),
             ],
-            options={
-                'db_table': 'roles_permission',
-            },
-        ),
-        migrations.CreateModel(
-            name='User',
-            fields=[
-                ('user_id', models.CharField(max_length=255, primary_key=True, serialize=False)),
-                ('employee_id', models.CharField(blank=True, max_length=255, null=True)),
-                ('first_name', models.CharField(max_length=255)),
-                ('last_name', models.CharField(max_length=255)),
-                ('email', models.EmailField(max_length=255, unique=True)),
-                ('password', models.CharField(max_length=255)),
-                ('status', models.CharField(choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Active', max_length=10)),
-                ('type', models.CharField(choices=[('Employee', 'Employee'), ('Admin', 'Admin')], default='Employee', max_length=10)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('role', models.ForeignKey(blank=True, db_column='role_id', null=True, on_delete=django.db.models.deletion.CASCADE, to='login.rolespermission')),
+            state_operations=[
+                migrations.CreateModel(
+                    name='RolesPermission',
+                    fields=[
+                        ('role_id', models.CharField(max_length=255, primary_key=True, serialize=False)),
+                        ('role_name', models.CharField(max_length=255)),
+                        ('description', models.TextField(blank=True, null=True)),
+                        ('permissions', models.TextField(blank=True, null=True)),
+                        ('access_level', models.CharField(choices=[('Read-Only', 'Read Only'), ('Full Access', 'Full Access')], default='Full Access', max_length=20)),
+                    ],
+                    options={
+                        'db_table': 'roles_permission',
+                    },
+                ),
+                migrations.CreateModel(
+                    name='User',
+                    fields=[
+                        ('user_id', models.CharField(max_length=255, primary_key=True, serialize=False)),
+                        ('employee_id', models.CharField(blank=True, max_length=255, null=True)),
+                        ('first_name', models.CharField(max_length=255)),
+                        ('last_name', models.CharField(max_length=255)),
+                        ('email', models.EmailField(max_length=255, unique=True)),
+                        ('password', models.CharField(max_length=255)),
+                        ('status', models.CharField(choices=[('Active', 'Active'), ('Inactive', 'Inactive')], default='Active', max_length=10)),
+                        ('type', models.CharField(choices=[('Employee', 'Employee'), ('Admin', 'Admin')], default='Employee', max_length=10)),
+                        ('created_at', models.DateTimeField(auto_now_add=True)),
+                        ('updated_at', models.DateTimeField(auto_now=True)),
+                        ('role', models.ForeignKey(blank=True, db_column='role_id', null=True, on_delete=django.db.models.deletion.CASCADE, to='login.rolespermission')),
+                    ],
+                    options={
+                        'db_table': 'users',
+                    },
+                ),
             ],
-            options={
-                'db_table': 'users',
-            },
         ),
     ]

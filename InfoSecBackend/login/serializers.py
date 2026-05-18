@@ -92,3 +92,9 @@ class RoleDetailSerializer(serializers.Serializer):
     role_id = serializers.CharField()
     role_name = serializers.CharField()
     modules = serializers.ListField(child=serializers.CharField())
+
+
+class RolePermissionsSerializer(serializers.Serializer):
+    role_name = serializers.CharField()
+    modules = serializers.ListField(child=serializers.CharField())
+    django_permissions = serializers.ListField(child=serializers.DictField())
