@@ -94,17 +94,20 @@ def build_roles_with_modules(role_names):
         for role_name in role_names
     ]
 
-def build_user_payload(user):
+def resolve_user_role_name(user):
     group_names = set(user.groups.values_list("name", flat=True))
 
-    if user.is_superuser or is_effective_admin(group_names):
-        role_name = "Admin"
-    elif "Staff" in group_names:
-        role_name = "Staff"
-    elif group_names:
-        role_name = sorted(group_names)[0]
-    else:
-        role_name = DEFAULT_ROLE_NAME
+    if user.is_superuser or "Admin" in group_names:
+        return "Admin"
+    if "Staff" in group_names:
+        return "Staff"
+    if group_names:
+        return sorted(group_names)[0]
+    return DEFAULT_ROLE_NAME
+
+
+def build_user_payload(user):
+    role_name = resolve_user_role_name(user)
 
     return {
         "user_id": str(user.pk),
@@ -143,16 +146,7 @@ class GetCurrentUserRoleView(APIView):
 
     def get(self, request):
         user = request.user
-        group_names = list(user.groups.values_list("name", flat=True))
-
-        if user.is_superuser or is_effective_admin(set(group_names)):
-            effective_role = "Admin"
-        elif "Staff" in group_names:
-            effective_role = "Staff"
-        elif group_names:
-            effective_role = sorted(group_names)[0]
-        else:
-            effective_role = DEFAULT_ROLE_NAME
+        effective_role = resolve_user_role_name(user)
 
         return Response({
             "success": True,
