@@ -1,5 +1,6 @@
 from .serializers import DocumentSerializer
 from .models import Document, Section, SubSection
+from notifications.services import create_notif
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -32,9 +33,9 @@ def get_users(request):
 def create_update_document(request):
     print("(debug) request.data:")
     print(request.data)
-
+    updating = False
     User = get_user_model()
-
+    curr_user_id = request.data.get('curr_id')
     sections = json.loads(request.data.get('sections'))
     tags = json.loads(request.data.get('tags'))
     pdf_file = request.data.get('pdf_file', None)
@@ -44,6 +45,7 @@ def create_update_document(request):
     if str(request.data.get('id'))[:3] == 'new':
         new_doc = Document()
     else:
+        updating = True
         new_doc = Document.objects.get(id=int(request.data.get('id')))
 
     new_doc.title = request.data.get('title')
@@ -81,6 +83,11 @@ def create_update_document(request):
             new_subsect.title = subsect.get('title')
             new_subsect.content = subsect.get('content')
             new_subsect.save()
+    
+    if updating:
+        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="updated", document=new_doc)
+    else:
+        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="created", document=new_doc)
 
     return Response(status=status.HTTP_200_OK)
 

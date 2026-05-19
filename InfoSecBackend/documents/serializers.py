@@ -21,8 +21,6 @@ class DocumentSerializer(serializers.ModelSerializer):
     reviewerName = serializers.SerializerMethodField()
     class Meta:
         model = Document
-        #TODO: 
-        # fields = ["id", "title", "details", "pdf_file", "pdf_filename", "authoredBy", "reviewedBy", "lastReviewed", "sections"]
         fields = ["id", "title", "details", "pdf_file", "pdf_filename", "authoredBy", "reviewedBy", "reviewerName", "authorName", "lastUpdated", "lastReviewed", "sections", "tags"]
     def get_pdf_filename(self, obj):
         if obj.pdf_file:

@@ -1,13 +1,14 @@
 from django.db import models
+from django.conf import settings
 
 # Create your models here.
 class Notification(models.Model):
-    notifications_id = models.CharField(primary_key=True, max_length=255)
-    module = models.CharField(max_length=255)
-    to_user_id = models.CharField(max_length=255)
-    message = models.CharField(max_length=255)
-    notifications_status = models.CharField(max_length=255)
-    created_at = models.DateTimeField()
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='created_notifs', on_delete=models.CASCADE, null=True)
+    action = models.CharField(max_length=255)
+    document = models.ForeignKey('documents.Document', related_name='related_notifs', on_delete=models.CASCADE, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    #class Meta:
-     #   db_table = 'admin"."notifications'
+class UserNotification(models.Model):
+    to_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_notifs', on_delete=models.CASCADE)
+    notification = models.ForeignKey(Notification, related_name='user_notifs', on_delete=models.CASCADE)
+    read = models.BooleanField(default=False)
