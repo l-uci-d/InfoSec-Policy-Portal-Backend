@@ -25,13 +25,11 @@ from .serializers import (
 
 ROLE_TO_MODULES = {
     "Admin": ["All"],
-    "Staff": ["Policies", "Documents"],
+    "Staff": ["ViewDocuments"],
 }
 
 DEFAULT_ROLE_NAME = "Staff"
-ALL_MODULES_KEY = "All"
 ADMIN_OVERRIDE_MODULE = "UserManagement" # if in role: {modules}, then considered as admin
-APP_MODULES = ["Home", "Documents", "Policies", "RecentNews", "Others","UserManagement"]
 
 
 def normalize_module_names(module_names):
@@ -39,7 +37,7 @@ def normalize_module_names(module_names):
     seen = set()
     for module_name in module_names:
         module_name = (module_name or "").strip()
-        if module_name and module_name in APP_MODULES and module_name not in seen:
+        if module_name and module_name not in seen:
             cleaned_modules.append(module_name)
             seen.add(module_name)
     return cleaned_modules
@@ -59,28 +57,7 @@ def get_modules_for_role(role_name):
     if custom_modules is not None:
         return custom_modules
 
-    modules = ROLE_TO_MODULES.get(role_name, [])
-    if ALL_MODULES_KEY in modules:
-        return [ALL_MODULES_KEY, *APP_MODULES]
-    return modules
-
-
-def get_modules_for_admin_check(role_name):
-    modules = get_modules_for_role(role_name)
-    if ALL_MODULES_KEY in modules:
-        return APP_MODULES
-    return modules
-
-
-def is_effective_admin(group_names):
-    if "Admin" in group_names:
-        return True
-
-    for role_name in group_names:
-        if ADMIN_OVERRIDE_MODULE in get_modules_for_admin_check(role_name):
-            return True
-
-    return False
+    return ROLE_TO_MODULES.get(role_name, [])
 
 
 def build_roles_with_modules(role_names):
@@ -169,7 +146,6 @@ class GetCurrentUserRoleView(APIView):
                     "role_name": effective_role,
                     "modules": get_modules_for_role(effective_role),
                 },
-                "available_modules": APP_MODULES,
             }
         }, status=status.HTTP_200_OK)
 
@@ -399,7 +375,6 @@ class CreateRoleView(APIView):
             return Response({
                 "success": False,
                 "message": "At least one valid module is required",
-                "available_modules": APP_MODULES,
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if Role.objects.filter(role_name=role_name).exists():
@@ -435,7 +410,6 @@ class UpdateRoleModulesView(APIView):
             return Response({
                 "success": False,
                 "message": "At least one valid module is required",
-                "available_modules": APP_MODULES,
             }, status=status.HTTP_400_BAD_REQUEST)
 
         role = Role.objects.filter(role_name=role_name).first()
