@@ -1,9 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from uuid import uuid4
-from login.models import RolesPermission
-from login.models import AccessLevel
+from login.models import Role
 
 User = get_user_model()
 
@@ -20,7 +17,7 @@ ROLE_TO_USERS = {
 }
 
 DEFAULT_ROLE_MODULES = {
-    "Admin": ["Home", "Documents", "Policies", "RecentNews", "Others", "UserManagement"],
+    "Admin": ["All"],
     "Staff": ["Home", "Documents", "Policies", "RecentNews", "Others"],
 }
 
@@ -37,28 +34,17 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         reset = options["reset"]
 
-        # Ensure groups exist
-        admin_group, _ = Group.objects.get_or_create(name="Admin")
-        staff_group, _ = Group.objects.get_or_create(name="Staff")
-
         for role_name, modules in DEFAULT_ROLE_MODULES.items():
-            role = RolesPermission.objects.filter(role_name=role_name).first()
-            if role is None:
-                role = RolesPermission(
-                    role_id=str(uuid4()),
-                    role_name=role_name,
-                )
-
-            role.permissions = ", ".join(modules)
-            role.access_level = AccessLevel.FULL_ACCESS
-            role.save()
+            Role.objects.update_or_create(
+                role_name=role_name,
+                defaults={"modules": ", ".join(modules)},
+            )
 
         if reset:
             self.stdout.write(self.style.WARNING("Reset requested: deleting all users..."))
             User.objects.all().delete()
 
-        def upsert(email, password, first, last, superuser, group):
-            # Keep username=email so authenticate(username=email, ...) works
+        def upsert(email, password, first, last, superuser, role_name):
             user, created = User.objects.get_or_create(
                 username=email,
                 defaults={"email": email, "first_name": first, "last_name": last},
@@ -69,21 +55,21 @@ class Command(BaseCommand):
             user.last_name = last
             user.is_active = True
             user.is_superuser = bool(superuser)
-            user.is_staff = bool(superuser)  # staff allows /admin access if you use it
+            user.is_staff = bool(superuser)
             user.set_password(password)
             user.save()
 
-            user.groups.clear()
-            user.groups.add(group)
+            role = Role.objects.get(role_name=role_name)
+            user.role = role
+            user.save(update_fields=["role"])
 
             return created
 
         # Create users
         for role, users in ROLE_TO_USERS.items():
-            group = admin_group if role == "Admin" else staff_group
             for u in users:
                 created = upsert(
-                    u["email"], u["password"], u["first"], u["last"], u["superuser"], group
+                    u["email"], u["password"], u["first"], u["last"], u["superuser"], role
                 )
                 msg = f"{'Created' if created else 'Updated'} {role}: {u['email']}"
                 self.stdout.write(self.style.SUCCESS(msg))

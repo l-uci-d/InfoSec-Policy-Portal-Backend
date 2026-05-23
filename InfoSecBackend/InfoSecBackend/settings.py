@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     , "documents"
 ]
 
+AUTH_USER_MODEL = 'login.User'
+
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',

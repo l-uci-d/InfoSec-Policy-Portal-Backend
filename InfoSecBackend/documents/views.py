@@ -50,8 +50,8 @@ def create_update_document(request):
 
     new_doc.title = request.data.get('title')
     new_doc.details = request.data.get('details')
-    new_doc.authoredBy = User.objects.get(id=int(request.data.get('authoredBy')))
-    new_doc.reviewedBy = User.objects.get(id=int(request.data.get('reviewedBy')))
+    new_doc.authoredBy = User.objects.get(id=request.data.get('authoredBy'))
+    new_doc.reviewedBy = User.objects.get(id=request.data.get('reviewedBy'))
     if pdf_file:
         new_doc.pdf_file = pdf_file
     new_doc.lastReviewed = request.data.get('lastReviewed')
@@ -85,9 +85,9 @@ def create_update_document(request):
             new_subsect.save()
     
     if updating:
-        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="updated", document=new_doc, misc_title=None)
+        create_notif(actor=User.objects.get(id=curr_user_id), action="updated", document=new_doc, misc_title=None)
     else:
-        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="created", document=new_doc, misc_title=None)
+        create_notif(actor=User.objects.get(id=curr_user_id), action="created", document=new_doc, misc_title=None)
 
     return Response(status=status.HTTP_200_OK)
 

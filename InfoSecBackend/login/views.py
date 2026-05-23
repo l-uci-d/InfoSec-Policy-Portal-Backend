@@ -1,26 +1,25 @@
 import math
-from django.db.models import Count
+import re
+import uuid
 
 from django.contrib.auth import authenticate, get_user_model
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from rest_framework.pagination import PageNumberPagination
 from django.db import transaction
-from audit_log.models import AuditLog
+from django.db.models import Count
+from rest_framework import status
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from audit_log.middleware import get_client_ip
-import uuid
-import re
-from django.contrib.auth.models import Group
-from django.contrib.auth.models import Permission
-from .models import AccessLevel, RolesPermission
+from audit_log.models import AuditLog
+from .models import Role
 from .serializers import (
-    UserAccessListItemSerializer,
-    RoleListItemSerializer,
     RoleCreateRequestSerializer,
     RoleDetailSerializer,
+    RoleListItemSerializer,
     RoleModulesUpdateRequestSerializer,
+    UserAccessListItemSerializer,
     UserRoleBulkUpdateRequestSerializer,
     UserRoleUpdateResultSerializer,
 )
@@ -32,8 +31,9 @@ ROLE_TO_MODULES = {
 
 DEFAULT_ROLE_NAME = "Staff"
 ALL_MODULES_KEY = "All"
-ADMIN_OVERRIDE_MODULE = "UserManagement" # if in role: {modules}, then considered as admin
-APP_MODULES = ["Home", "Documents", "Policies", "RecentNews", "Others","UserManagement"]
+APP_MODULES = ["Home", "Documents", "Policies", "RecentNews", "Others", "UserManagement"]
+
+User = get_user_model()
 
 
 def normalize_module_names(module_names):
@@ -47,42 +47,35 @@ def normalize_module_names(module_names):
     return cleaned_modules
 
 
-def get_custom_role_modules(role_name):
-    role = RolesPermission.objects.filter(role_name=role_name).order_by("role_id").first()
-    if not role:
-        return None
-
-    modules = role.get_modules_list()
-    return normalize_module_names(modules)
+def get_or_create_default_role(role_name):
+    raw_modules = ROLE_TO_MODULES.get(role_name, [])
+    if ALL_MODULES_KEY in raw_modules:
+        default_modules = [ALL_MODULES_KEY]
+    else:
+        default_modules = normalize_module_names(raw_modules)
+    role, _ = Role.objects.get_or_create(
+        role_name=role_name,
+        defaults={"modules": ", ".join(default_modules)},
+    )
+    return role
 
 
 def get_modules_for_role(role_name):
-    custom_modules = get_custom_role_modules(role_name)
-    if custom_modules is not None:
-        return custom_modules
+    role = Role.objects.filter(role_name=role_name).first()
+    if role:
+        raw_modules = role.get_modules_list()
+        if ALL_MODULES_KEY in raw_modules:
+            return [ALL_MODULES_KEY, *APP_MODULES]
+
+        modules = normalize_module_names(raw_modules)
+        if ALL_MODULES_KEY in modules:
+            return [ALL_MODULES_KEY, *APP_MODULES]
+        return modules
 
     modules = ROLE_TO_MODULES.get(role_name, [])
     if ALL_MODULES_KEY in modules:
         return [ALL_MODULES_KEY, *APP_MODULES]
     return modules
-
-
-def get_modules_for_admin_check(role_name):
-    modules = get_modules_for_role(role_name)
-    if ALL_MODULES_KEY in modules:
-        return APP_MODULES
-    return modules
-
-
-def is_effective_admin(group_names):
-    if "Admin" in group_names:
-        return True
-
-    for role_name in group_names:
-        if ADMIN_OVERRIDE_MODULE in get_modules_for_admin_check(role_name):
-            return True
-
-    return False
 
 
 def build_roles_with_modules(role_names):
@@ -94,23 +87,22 @@ def build_roles_with_modules(role_names):
         for role_name in role_names
     ]
 
-def resolve_user_role_name(user):
-    group_names = set(user.groups.values_list("name", flat=True))
 
-    if user.is_superuser or "Admin" in group_names:
+def resolve_user_role_name(user):
+    if getattr(user, "is_superuser", False):
         return "Admin"
-    if "Staff" in group_names:
-        return "Staff"
-    if group_names:
-        return sorted(group_names)[0]
+
+    role = getattr(user, "role", None)
+    if role:
+        return role.role_name
+
     return DEFAULT_ROLE_NAME
 
 
 def build_user_payload(user):
     role_name = resolve_user_role_name(user)
-
     return {
-        "user_id": str(user.pk),
+        "id": str(user.id),
         "first_name": user.first_name,
         "last_name": user.last_name,
         "email": user.email,
@@ -122,22 +114,22 @@ def build_user_payload(user):
 
 
 def build_user_access_payload(user):
-    role_names = list(user.groups.values_list("name", flat=True))
+    role_name = resolve_user_role_name(user)
     return {
-        "user_id": str(user.pk),
+        "id": str(user.id),
         "first_name": user.first_name,
         "last_name": user.last_name,
         "email": user.email,
-        "roles": build_roles_with_modules(role_names),
+        "roles": build_roles_with_modules([role_name]),
         "last_login": user.last_login,
     }
 
 
-def build_role_detail_payload(role_name, role_id=None):
+def build_role_detail_payload(role):
     return {
-        "role_id": str(role_id or role_name),
-        "role_name": role_name,
-        "modules": get_modules_for_role(role_name),
+        "role_id": str(role.role_id),
+        "role_name": role.role_name,
+        "modules": get_modules_for_role(role.role_name),
     }
 
 
@@ -146,15 +138,15 @@ class GetCurrentUserRoleView(APIView):
 
     def get(self, request):
         user = request.user
-        effective_role = resolve_user_role_name(user)
+        role_name = resolve_user_role_name(user)
 
         return Response({
             "success": True,
             "data": {
-                "user_id": str(user.pk),
+                "id": str(user.id),
                 "role": {
-                    "role_name": effective_role,
-                    "modules": get_modules_for_role(effective_role),
+                    "role_name": role_name,
+                    "modules": get_modules_for_role(role_name),
                 },
                 "available_modules": APP_MODULES,
             }
@@ -165,22 +157,14 @@ class GetRoleByNameView(APIView):
     permission_classes = []
 
     def get(self, request, role_name):
-        role = RolesPermission.objects.filter(role_name=role_name).first()
-        if role:
-            payload = build_role_detail_payload(role.role_name, role.role_id)
-        else:
-            group = Group.objects.filter(name=role_name).first()
-            modules = get_modules_for_role(role_name)
+        role = Role.objects.filter(role_name=role_name).first()
+        if not role:
+            return Response({
+                "success": False,
+                "message": "Role not found",
+            }, status=status.HTTP_404_NOT_FOUND)
 
-            if not group and not modules:
-                return Response({
-                    "success": False,
-                    "message": "Role not found",
-                }, status=status.HTTP_404_NOT_FOUND)
-
-            payload = build_role_detail_payload(role_name, group.id if group else None)
-
-        serializer = RoleDetailSerializer(payload)
+        serializer = RoleDetailSerializer(build_role_detail_payload(role))
         return Response({
             "success": True,
             "data": serializer.data,
@@ -190,37 +174,25 @@ class GetRoleByNameView(APIView):
 class GetRolePermissionsView(APIView):
 
     def get(self, request, role_name):
-        # modules come from custom RolesPermission or default mapping
-        modules = get_modules_for_role(role_name)
-
-        # gather django auth permissions if a Group exists with this name
-        django_perms = []
-        group = Group.objects.filter(name=role_name).first()
-        if group:
-            perms = group.permissions.select_related('content_type').all()
-            django_perms = [
-                {
-                    "id": p.id,
-                    "codename": p.codename,
-                    "name": p.name,
-                    "content_type": f"{p.content_type.app_label}.{p.content_type.model}",
-                }
-                for p in perms
-            ]
+        role = Role.objects.filter(role_name=role_name).first()
+        if not role:
+            return Response({
+                "success": False,
+                "message": "Role not found",
+            }, status=status.HTTP_404_NOT_FOUND)
 
         payload = {
             "role_name": role_name,
-            "modules": modules,
-            "django_permissions": django_perms,
+            "modules": get_modules_for_role(role_name),
+            "django_permissions": [],
         }
 
         return Response({"success": True, "data": payload}, status=status.HTTP_200_OK)
 
-User = get_user_model()
 
 class LoginView(APIView):
-    authentication_classes = []  # optional: allow unauthenticated
-    permission_classes = []      # optional
+    authentication_classes = []
+    permission_classes = []
 
     def post(self, request):
         email = (request.data.get("email") or "").strip().lower()
@@ -236,9 +208,7 @@ class LoginView(APIView):
             )
             return Response({"success": False, "message": "Email and password are required"}, status=400)
 
-
         user = authenticate(request, username=email, password=password)
-
         if not user:
             AuditLog.objects.create(
                 log_id=f"LOG-{uuid.uuid4().hex[:8].upper()}",
@@ -259,7 +229,7 @@ class LoginView(APIView):
 
         AuditLog.objects.create(
             log_id=f"LOG-{uuid.uuid4().hex[:8].upper()}",
-            user_id=user.pk,
+            user_id=user.id,
             action="Successful login",
             ip_address=ip_address,
         )
@@ -269,7 +239,7 @@ class LoginView(APIView):
             "message": "Login successful",
             "data": build_user_payload(user)
         }, status=200)
-    
+
 
 class RegisterView(APIView):
     authentication_classes = []
@@ -295,22 +265,23 @@ class RegisterView(APIView):
             return Response({"success": False, "message": "Email already registered. Login with that email or reset your password"}, status=409)
 
         user = User.objects.create_user(
-            username=email,          # if default Django user
+            username=email,
             email=email,
             password=password,
             first_name=first_name,
             last_name=last_name,
         )
 
-        staff_group, _ = Group.objects.get_or_create(name="Staff")
-        user.groups.add(staff_group)
+        staff_role = get_or_create_default_role(DEFAULT_ROLE_NAME)
+        user.role = staff_role
+        user.save(update_fields=["role"])
 
         return Response({
             "success": True,
             "message": "Registration successful",
             "data": build_user_payload(user)
         }, status=201)
-    
+
 
 class ResetPasswordView(APIView):
     authentication_classes = []
@@ -325,41 +296,41 @@ class ResetPasswordView(APIView):
         except User.DoesNotExist:
             return Response({"success": False, "message": "User not found"}, status=404)
 
-
         if user.check_password(new_password):
             return Response(
                 {"success": False, "message": "New password cannot be the same as your current password"},
-                status=400
+                status=400,
             )
-        user.set_password(new_password) 
+
+        user.set_password(new_password)
         user.save(update_fields=["password"])
         return Response({"success": True})
+
 
 class UserPagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+
 class GetAllUsersView(APIView):
     permission_classes = []
 
     def get(self, request):
-        users = User.objects.prefetch_related("groups").all().order_by("id")
+        users = User.objects.select_related("role").all().order_by("id")
 
         paginator = UserPagination()
         paginated_users = paginator.paginate_queryset(users, request)
 
         payload = [build_user_access_payload(user) for user in paginated_users]
-
         serializer = UserAccessListItemSerializer(payload, many=True)
 
-        # para sa frontend
         total_pages = math.ceil(paginator.page.paginator.count / paginator.page_size)
 
         return Response({
             "success": True,
             "data": serializer.data,
-            "total_pages": total_pages
+            "total_pages": total_pages,
         }, status=status.HTTP_200_OK)
 
 
@@ -367,13 +338,13 @@ class GetAllRolesView(APIView):
     permission_classes = []
 
     def get(self, request):
-        roles = Group.objects.annotate(user_count=Count("user")).order_by("name")
+        roles = Role.objects.annotate(user_count=Count("users")).order_by("role_name")
         payload = [
             {
-                "role_id": role.id,
-                "role_name": role.name,
+                "role_id": str(role.role_id),
+                "role_name": role.role_name,
                 "user_count": role.user_count,
-                "modules": get_modules_for_role(role.name),
+                "modules": get_modules_for_role(role.role_name),
             }
             for role in roles
         ]
@@ -402,23 +373,18 @@ class CreateRoleView(APIView):
                 "available_modules": APP_MODULES,
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        if RolesPermission.objects.filter(role_name=role_name).exists() or Group.objects.filter(name=role_name).exists():
+        if Role.objects.filter(role_name=role_name).exists():
             return Response({
                 "success": False,
                 "message": "Role already exists",
             }, status=status.HTTP_409_CONFLICT)
 
-        group = Group.objects.create(name=role_name)
-        role = RolesPermission.objects.create(
-            role_id=str(uuid.uuid4()),
+        role = Role.objects.create(
             role_name=role_name,
-            permissions=", ".join(modules),
-            access_level=AccessLevel.FULL_ACCESS,
+            modules=", ".join(modules),
         )
 
-        payload = build_role_detail_payload(group.name, role.role_id)
-        serializer = RoleDetailSerializer(payload)
-
+        serializer = RoleDetailSerializer(build_role_detail_payload(role))
         return Response({
             "success": True,
             "data": serializer.data,
@@ -440,27 +406,17 @@ class UpdateRoleModulesView(APIView):
                 "available_modules": APP_MODULES,
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        group = Group.objects.filter(name=role_name).first()
-        if not group:
+        role = Role.objects.filter(role_name=role_name).first()
+        if not role:
             return Response({
                 "success": False,
                 "message": "Role not found",
             }, status=status.HTTP_404_NOT_FOUND)
 
-        role = RolesPermission.objects.filter(role_name=role_name).first()
-        if role:
-            role.permissions = ", ".join(modules)
-            role.save(update_fields=["permissions"])
-        else:
-            role = RolesPermission.objects.create(
-                role_id=str(uuid.uuid4()),
-                role_name=role_name,
-                permissions=", ".join(modules),
-                access_level=AccessLevel.FULL_ACCESS,
-            )
+        role.modules = ", ".join(modules)
+        role.save(update_fields=["modules"])
 
-        payload = build_role_detail_payload(role_name, role.role_id)
-        serializer = RoleDetailSerializer(payload)
+        serializer = RoleDetailSerializer(build_role_detail_payload(role))
         return Response({
             "success": True,
             "data": serializer.data,
@@ -475,24 +431,17 @@ class UpdateUserRolesView(APIView):
         request_serializer.is_valid(raise_exception=True)
 
         updates = request_serializer.validated_data["updates"]
-
         role_names = {
             update["role"].strip()
             for update in updates
             if update["role"].strip()
         }
 
-        # if not role_names:
-        #     return Response({
-        #         "success": False,
-        #         "message": "At least one non-empty role is required",
-        #     }, status=status.HTTP_400_BAD_REQUEST)
-
-        groups_by_name = {
-            group.name: group 
-            for group in Group.objects.filter(name__in=role_names)
+        roles_by_name = {
+            role.role_name: role
+            for role in Role.objects.filter(role_name__in=role_names)
         }
-        missing_roles = sorted(role_names - set(groups_by_name.keys()))
+        missing_roles = sorted(role_names - set(roles_by_name.keys()))
         if missing_roles:
             return Response({
                 "success": False,
@@ -500,9 +449,9 @@ class UpdateUserRolesView(APIView):
                 "unknown_roles": missing_roles,
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        user_ids = [str(update["user_id"]) for update in updates]
-        users = User.objects.filter(pk__in=user_ids).prefetch_related("groups")
-        users_by_id = {str(user.pk): user for user in users}
+        user_ids = [str(update["id"]) for update in updates]
+        users = User.objects.filter(id__in=user_ids).select_related("role")
+        users_by_id = {str(user.id): user for user in users}
         missing_users = sorted(set(user_ids) - set(users_by_id.keys()))
         if missing_users:
             return Response({
@@ -514,24 +463,20 @@ class UpdateUserRolesView(APIView):
         results = []
         with transaction.atomic():
             for update in updates:
-                user_id = str(update["user_id"])
+                user_id = str(update["id"])
                 user = users_by_id[user_id]
                 selected_role_name = update["role"].strip()
-                group_instances = [groups_by_name[selected_role_name]]
+                selected_role = roles_by_name[selected_role_name]
 
-                user.groups.set(group_instances)
-
-                # Keep auth flags aligned with explicit Admin group assignment.
+                user.role = selected_role
                 is_admin_role = selected_role_name == "Admin"
-                if user.is_superuser != is_admin_role or user.is_staff != is_admin_role:
-                    user.is_superuser = is_admin_role
-                    user.is_staff = is_admin_role
-                    user.save(update_fields=["is_superuser", "is_staff"])
+                user.is_superuser = is_admin_role
+                user.is_staff = is_admin_role
+                user.save(update_fields=["role", "is_superuser", "is_staff"])
 
-                updated_roles = list(user.groups.values_list("name", flat=True))
                 results.append({
-                    "user_id": user_id,
-                    "roles": build_roles_with_modules(updated_roles),
+                    "id": user_id,
+                    "roles": build_roles_with_modules([selected_role_name]),
                 })
 
         response_serializer = UserRoleUpdateResultSerializer(results, many=True)

@@ -30,7 +30,7 @@ class CurrentUserMiddleware:
         
         # Check if user is authenticated in request (from session or token)
         if hasattr(request, 'user') and request.user.is_authenticated:
-            _thread_locals.user = request.user.user_id
+            _thread_locals.user = getattr(request.user, 'id', None)
         
         # Also check for user_id in request headers (for API calls)
         elif 'HTTP_X_USER_ID' in request.META:

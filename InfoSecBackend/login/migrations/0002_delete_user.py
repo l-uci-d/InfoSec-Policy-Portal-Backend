@@ -9,8 +9,4 @@ class Migration(migrations.Migration):
         ('login', '0001_initial'),
     ]
 
-    operations = [
-        migrations.DeleteModel(
-            name='User',
-        ),
-    ]
+    operations = []

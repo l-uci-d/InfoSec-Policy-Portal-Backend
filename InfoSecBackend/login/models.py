@@ -1,4 +1,6 @@
 from django.core.exceptions import ValidationError
+from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 import uuid
 
@@ -41,6 +43,75 @@ class RolesPermission(models.Model):
         if self.permissions:
             return [module.strip() for module in self.permissions.split(',')]
         return []
+
+
+class Role(models.Model):
+    role_id = models.CharField(primary_key=True, max_length=255, default=uuid.uuid4, editable=False)
+    role_name = models.CharField(max_length=255, unique=True)
+    modules = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'role'
+
+    def get_modules_list(self):
+        if self.modules:
+            return [module.strip() for module in self.modules.split(',') if module.strip()]
+        return []
+
+
+class UserManager(BaseUserManager):
+    def create_user(self, username=None, email=None, password=None, **extra_fields):
+        if not username:
+            username = email
+        if not username:
+            raise ValueError("The Username field must be set")
+
+        email = self.normalize_email(email or username)
+        user = self.model(username=username, email=email, **extra_fields)
+        if not user.id:
+            user.id = str(uuid.uuid4())
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, username=None, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+        return self.create_user(username, email=email, password=password, **extra_fields)
+
+
+class User(AbstractBaseUser):
+    id = models.CharField(primary_key=True, max_length=255, default=uuid.uuid4, editable=False, db_column='user_id')
+    username = models.CharField(max_length=150, unique=True)
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    email = models.EmailField(max_length=254, blank=True)
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='role_id',
+        related_name='users',
+    )
+    # legacy fields removed to keep table similar to Django's auth_user
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    is_superuser = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(auto_now_add=True)
+
+    objects = UserManager()
+
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
+
+    class Meta:
+        db_table = 'users'
+
+    def __str__(self):
+        return self.username
+
 
 """ class User(models.Model):
     user_id = models.CharField(primary_key=True, max_length=255)

@@ -1,12 +1,11 @@
 # admin/serializers.py
 from rest_framework import serializers
-#from .models import User, RolesPermission
-from .models import RolesPermission
+from .models import Role
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
-        model = RolesPermission
-        fields = ['role_id', 'role_name', 'description', 'permissions'] #'access_level']
+        model = Role
+        fields = ['role_id', 'role_name', 'modules']
 
 """ class LoginResponseSerializer(serializers.ModelSerializer):
     # full_name = serializers.SerializerMethodField()
@@ -47,7 +46,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserAccessListItemSerializer(serializers.Serializer):
-    user_id = serializers.CharField()
+    id = serializers.CharField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     email = serializers.EmailField()
@@ -55,14 +54,14 @@ class UserAccessListItemSerializer(serializers.Serializer):
 
 
 class RoleListItemSerializer(serializers.Serializer):
-    role_id = serializers.IntegerField()
+    role_id = serializers.CharField()
     role_name = serializers.CharField()
     user_count = serializers.IntegerField()
     modules = serializers.ListField(child=serializers.CharField())
 
 
 class UserRoleUpdateItemSerializer(serializers.Serializer):
-    user_id = serializers.CharField()
+    id = serializers.CharField()
     role = serializers.CharField(trim_whitespace=True, allow_blank=False)
 
 
@@ -71,7 +70,7 @@ class UserRoleBulkUpdateRequestSerializer(serializers.Serializer):
 
 
 class UserRoleUpdateResultSerializer(serializers.Serializer):
-    user_id = serializers.CharField()
+    id = serializers.CharField()
     roles = serializers.ListField(child=serializers.DictField())
 
 
