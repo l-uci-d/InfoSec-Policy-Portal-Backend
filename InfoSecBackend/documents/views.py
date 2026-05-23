@@ -85,9 +85,9 @@ def create_update_document(request):
             new_subsect.save()
     
     if updating:
-        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="updated", document=new_doc)
+        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="updated", document=new_doc, misc_title=None)
     else:
-        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="created", document=new_doc)
+        create_notif(actor=User.objects.get(id=int(curr_user_id)), action="created", document=new_doc, misc_title=None)
 
     return Response(status=status.HTTP_200_OK)
 
