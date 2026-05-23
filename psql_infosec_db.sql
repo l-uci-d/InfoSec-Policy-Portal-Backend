@@ -38,7 +38,7 @@ GRANT USAGE, CREATE ON SCHEMA admin TO infosec_app;
 \echo '== Creating tables =='
 
 -- CHANGED: permissions is TEXT (module allowlist)
-CREATE TABLE IF NOT EXISTS admin.roles_permission (
+CREATE TABLE IF NOT EXISTS public.roles_permission (
   role_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   role_name    TEXT UNIQUE NOT NULL,
   description  TEXT,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS admin.roles_permission (
   access_level INT NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS admin.users (
+CREATE TABLE IF NOT EXISTS public.users (
   user_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name  TEXT NOT NULL,
   last_name   TEXT NOT NULL,
@@ -54,17 +54,17 @@ CREATE TABLE IF NOT EXISTS admin.users (
   password    TEXT NOT NULL,
   status      TEXT NOT NULL DEFAULT 'Active',
   type        TEXT NOT NULL DEFAULT 'User',
-  role_id     UUID NULL REFERENCES admin.roles_permission(role_id) ON DELETE SET NULL,
+  role_id     UUID NULL REFERENCES public.roles_permission(role_id) ON DELETE SET NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON admin.users (email);
+CREATE INDEX IF NOT EXISTS idx_users_email ON public.users (email);
 
 \echo '== Seeding roles =='
 
 -- Admin can see everything
-INSERT INTO admin.roles_permission (role_name, description, permissions, access_level)
+INSERT INTO public.roles_permission (role_name, description, permissions, access_level)
 VALUES ('Admin', 'Full access', 'All', 10)
 ON CONFLICT (role_name) DO UPDATE
 SET permissions = EXCLUDED.permissions,
@@ -72,7 +72,7 @@ SET permissions = EXCLUDED.permissions,
     access_level = EXCLUDED.access_level;
 
 -- Example limited role (shows only these modules)
-INSERT INTO admin.roles_permission (role_name, description, permissions, access_level)
+INSERT INTO public.roles_permission (role_name, description, permissions, access_level)
 VALUES ('Staff', 'Limited access', 'Policies,Documents', 3)
 ON CONFLICT (role_name) DO UPDATE
 SET permissions = EXCLUDED.permissions,
@@ -82,7 +82,7 @@ SET permissions = EXCLUDED.permissions,
 \echo '== Seeding users =='
 
 -- Juan (Admin)
-INSERT INTO admin.users (
+INSERT INTO public.users (
   first_name, last_name, email, password, status, type, role_id
 )
 VALUES (
@@ -93,12 +93,12 @@ VALUES (
   crypt('123', gen_salt('bf', 6)),
   'Active',
   'Admin',
-  (SELECT role_id FROM admin.roles_permission WHERE role_name='Admin')
+  (SELECT role_id FROM public.roles_permission WHERE role_name='Admin')
 )
 ON CONFLICT (email) DO NOTHING;
 
 -- NEW USER (Staff)
-INSERT INTO admin.users (
+INSERT INTO public.users (
   first_name, last_name, email, password, status, type, role_id
 )
 VALUES (
@@ -108,7 +108,7 @@ VALUES (
   crypt('123', gen_salt('bf', 6)),
   'Active',
   'User',
-  (SELECT role_id FROM admin.roles_permission WHERE role_name='Staff')
+  (SELECT role_id FROM public.roles_permission WHERE role_name='Staff')
 )
 ON CONFLICT (email) DO NOTHING;
 
@@ -119,15 +119,15 @@ ON CONFLICT (email) DO NOTHING;
 GRANT USAGE ON SCHEMA admin TO infosec_app;
 
 -- login needs SELECT
-GRANT SELECT ON TABLE admin.users TO infosec_app;
+GRANT SELECT ON TABLE public.users TO infosec_app;
 
 -- reset_password needs UPDATE
-GRANT UPDATE ON TABLE admin.users TO infosec_app;
+GRANT UPDATE ON TABLE public.users TO infosec_app;
 
 -- role fetch needs SELECT
-GRANT SELECT ON TABLE admin.roles_permission TO infosec_app;
+GRANT SELECT ON TABLE public.roles_permission TO infosec_app;
 
-GRANT INSERT ON TABLE admin.users TO infosec_app;
+GRANT INSERT ON TABLE public.users TO infosec_app;
 
 
 \echo '== Quick verification =='
@@ -136,6 +136,6 @@ SELECT
   r.role_name,
   r.permissions,
   (u.password = crypt('password123', u.password)) AS password_ok
-FROM admin.users u
-LEFT JOIN admin.roles_permission r ON r.role_id = u.role_id
+FROM public.users u
+LEFT JOIN public.roles_permission r ON r.role_id = u.role_id
 WHERE u.email IN ('juan@gmail.com','employee@gmail.com');

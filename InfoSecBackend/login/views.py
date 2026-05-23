@@ -14,7 +14,7 @@ import uuid
 import re
 from django.contrib.auth.models import Group
 from django.contrib.auth.models import Permission
-from .models import RolesPermission
+from .models import AccessLevel, RolesPermission
 from .serializers import (
     UserAccessListItemSerializer,
     RoleListItemSerializer,
@@ -413,7 +413,7 @@ class CreateRoleView(APIView):
             role_id=str(uuid.uuid4()),
             role_name=role_name,
             permissions=", ".join(modules),
-            access_level=0,
+            access_level=AccessLevel.FULL_ACCESS,
         )
 
         payload = build_role_detail_payload(group.name, role.role_id)
@@ -456,7 +456,7 @@ class UpdateRoleModulesView(APIView):
                 role_id=str(uuid.uuid4()),
                 role_name=role_name,
                 permissions=", ".join(modules),
-                access_level=0,
+                access_level=AccessLevel.FULL_ACCESS,
             )
 
         payload = build_role_detail_payload(role_name, role.role_id)
@@ -520,6 +520,13 @@ class UpdateUserRolesView(APIView):
                 group_instances = [groups_by_name[selected_role_name]]
 
                 user.groups.set(group_instances)
+
+                # Keep auth flags aligned with explicit Admin group assignment.
+                is_admin_role = selected_role_name == "Admin"
+                if user.is_superuser != is_admin_role or user.is_staff != is_admin_role:
+                    user.is_superuser = is_admin_role
+                    user.is_staff = is_admin_role
+                    user.save(update_fields=["is_superuser", "is_staff"])
 
                 updated_roles = list(user.groups.values_list("name", flat=True))
                 results.append({

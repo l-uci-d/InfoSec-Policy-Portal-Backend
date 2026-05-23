@@ -16,19 +16,19 @@ class Migration(migrations.Migration):
             database_operations=[
                 migrations.RunSQL(
                     sql="""
-                        CREATE TABLE IF NOT EXISTS admin.roles_permission (
+                        CREATE TABLE IF NOT EXISTS public.roles_permission (
                             role_id VARCHAR(255) PRIMARY KEY,
                             role_name VARCHAR(255) NOT NULL,
                             description TEXT NULL,
                             permissions TEXT NULL,
-                            access_level VARCHAR(20) NOT NULL DEFAULT 'Full Access'
+                            access_level INT NOT NULL DEFAULT 0
                         )
                     """,
-                    reverse_sql="DROP TABLE IF EXISTS admin.roles_permission CASCADE",
+                    reverse_sql="DROP TABLE IF EXISTS public.roles_permission CASCADE",
                 ),
                 migrations.RunSQL(
                     sql="""
-                        CREATE TABLE IF NOT EXISTS admin.users (
+                        CREATE TABLE IF NOT EXISTS public.users (
                             user_id VARCHAR(255) PRIMARY KEY,
                             employee_id VARCHAR(255) NULL,
                             first_name VARCHAR(255) NOT NULL,
@@ -39,10 +39,10 @@ class Migration(migrations.Migration):
                             type VARCHAR(10) NOT NULL DEFAULT 'Employee',
                             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                             updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                            role_id VARCHAR(255) NULL REFERENCES admin.roles_permission(role_id) ON DELETE CASCADE
+                            role_id VARCHAR(255) NULL REFERENCES public.roles_permission(role_id) ON DELETE CASCADE
                         )
                     """,
-                    reverse_sql="DROP TABLE IF EXISTS admin.users CASCADE",
+                    reverse_sql="DROP TABLE IF EXISTS public.users CASCADE",
                 ),
             ],
             state_operations=[
@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
                         ('role_name', models.CharField(max_length=255)),
                         ('description', models.TextField(blank=True, null=True)),
                         ('permissions', models.TextField(blank=True, null=True)),
-                        ('access_level', models.CharField(choices=[('Read-Only', 'Read Only'), ('Full Access', 'Full Access')], default='Full Access', max_length=20)),
+                        ('access_level', models.IntegerField(choices=[(3, 'Read-Only'), (10, 'Full Access')], default=10)),
                     ],
                     options={
                         'db_table': 'roles_permission',
