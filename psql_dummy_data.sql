@@ -1,44 +1,51 @@
-\echo '== Seeding MORE dummy users (Admins + Staff, gmail only) =='
+\set ON_ERROR_STOP on
 
--- NOTE: all these accounts use password: password123
--- Use DO UPDATE so re-running refreshes the data consistently.
+\echo '== Seeding MORE custom dummy users in public.users =='
 
-INSERT INTO public.users (first_name, last_name, email, password, status, type, role_id)
+-- NOTE:
+-- These accounts are for the custom public.users table.
+-- Your current /login/ endpoint authenticates against Django public.auth_user.
+-- For actual login accounts, run: python manage.py create_users --reset
+-- Password for all custom dummy users below: password123
+
+INSERT INTO public.users (user_id, employee_id, first_name, last_name, email, password, status, type, role_id)
 VALUES
   -- Admins
-  ('Jeff',   'Kawabata',  'jeff.admin@gmail.com',    crypt('password123', gen_salt('bf', 6)), 'Active',   'Admin',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin')),
-  ('Trisha', 'Dizon',     'trisha.admin@gmail.com',  crypt('password123', gen_salt('bf', 6)), 'Active',   'Admin',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin')),
-  ('Noah',   'Lim',       'noah.admin@gmail.com',    crypt('password123', gen_salt('bf', 6)), 'Active',   'Admin',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin')),
-  ('Ari',    'Santos',    'ari.admin@gmail.com',     crypt('password123', gen_salt('bf', 6)), 'Active', 'Admin',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin')),
+  (gen_random_uuid()::text, 'EMP-1001', 'Jeff',   'Kawabata', 'jeff.admin@gmail.com',   crypt('password123', gen_salt('bf', 6)), 'Active', 'Admin',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-1002', 'Trisha', 'Dizon',    'trisha.admin@gmail.com', crypt('password123', gen_salt('bf', 6)), 'Active', 'Admin',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-1003', 'Noah',   'Lim',      'noah.admin@gmail.com',   crypt('password123', gen_salt('bf', 6)), 'Active', 'Admin',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-1004', 'Ari',    'Santos',   'ari.admin@gmail.com',    crypt('password123', gen_salt('bf', 6)), 'Active', 'Admin',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Admin' LIMIT 1)),
 
-  -- Staff
-  ('Maria',  'Santos',    'maria.staff@gmail.com',   crypt('password123', gen_salt('bf', 6)), 'Active',   'User',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff')),
-  ('Ana',    'Reyes',     'ana.staff@gmail.com',     crypt('password123', gen_salt('bf', 6)), 'Active',   'User',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff')),
-  ('Miguel', 'Garcia',    'miguel.staff@gmail.com',  crypt('password123', gen_salt('bf', 6)), 'Active',   'User',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff')),
-  ('Lara',   'Torres',    'lara.staff@gmail.com',    crypt('password123', gen_salt('bf', 6)), 'Active',   'User',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff')),
-  ('Paolo',  'Cruz',      'paolo.staff@gmail.com',   crypt('password123', gen_salt('bf', 6)), 'Active',   'User',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff')),
-  ('Sofia',  'Navarro',   'sofia.staff@gmail.com',   crypt('password123', gen_salt('bf', 6)), 'Active', 'User',
-    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff'))
+  -- Staff / Employees
+  (gen_random_uuid()::text, 'EMP-2001', 'Maria',  'Santos',   'maria.staff@gmail.com',  crypt('password123', gen_salt('bf', 6)), 'Active', 'Employee',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-2002', 'Ana',    'Reyes',    'ana.staff@gmail.com',    crypt('password123', gen_salt('bf', 6)), 'Active', 'Employee',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-2003', 'Miguel', 'Garcia',   'miguel.staff@gmail.com', crypt('password123', gen_salt('bf', 6)), 'Active', 'Employee',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-2004', 'Lara',   'Torres',   'lara.staff@gmail.com',   crypt('password123', gen_salt('bf', 6)), 'Active', 'Employee',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-2005', 'Paolo',  'Cruz',     'paolo.staff@gmail.com',  crypt('password123', gen_salt('bf', 6)), 'Active', 'Employee',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff' LIMIT 1)),
+  (gen_random_uuid()::text, 'EMP-2006', 'Sofia',  'Navarro',  'sofia.staff@gmail.com',  crypt('password123', gen_salt('bf', 6)), 'Active', 'Employee',
+    (SELECT role_id FROM public.roles_permission WHERE role_name='Staff' LIMIT 1))
 
 ON CONFLICT (email) DO UPDATE
-SET first_name = EXCLUDED.first_name,
-    last_name  = EXCLUDED.last_name,
-    password   = EXCLUDED.password,
-    status     = EXCLUDED.status,
-    type       = EXCLUDED.type,
-    role_id    = EXCLUDED.role_id;
+SET employee_id = EXCLUDED.employee_id,
+    first_name   = EXCLUDED.first_name,
+    last_name    = EXCLUDED.last_name,
+    password     = EXCLUDED.password,
+    status       = EXCLUDED.status,
+    type         = EXCLUDED.type,
+    role_id      = EXCLUDED.role_id,
+    updated_at   = NOW();
 
+\echo '== Quick verification: custom dummy users =='
 
-\echo '== Quick verification (more users) =='
 SELECT
   u.email,
   u.status,
@@ -59,4 +66,5 @@ WHERE u.email IN (
   'lara.staff@gmail.com',
   'paolo.staff@gmail.com',
   'sofia.staff@gmail.com'
-);
+)
+ORDER BY u.email;
