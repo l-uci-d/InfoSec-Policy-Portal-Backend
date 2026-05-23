@@ -115,7 +115,7 @@ DATABASES = {
     "HOST": "127.0.0.1",
     "PORT": "5432",
     'OPTIONS': {
-            'options': '-c search_path=admin,public'
+            'options': '-c search_path=public'
         },
   }
 }
