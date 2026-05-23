@@ -1,73 +1,69 @@
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import connection
 from django.db import models
-import uuid
 
-class UserStatus(models.TextChoices):
-    ACTIVE = 'Active'
-    INACTIVE = 'Inactive'
 
-class UserType(models.TextChoices):
-    EMPLOYEE = 'Employee'
-    ADMIN = 'Admin'
-    
-class AccessLevel(models.IntegerChoices):
-    READ_ONLY = 3, 'Read-Only'
-    FULL_ACCESS = 10, 'Full Access'
-
-class RolesPermission(models.Model):
+class Role(models.Model):
     role_id = models.CharField(primary_key=True, max_length=255)
-    role_name = models.CharField(max_length=255)
-    description = models.TextField(null=True, blank=True)
-    permissions = models.TextField(null=True, blank=True)
-    access_level = models.IntegerField(
-        choices=AccessLevel.choices,
-        default=AccessLevel.FULL_ACCESS,
-    )
-    
+    role_name = models.CharField(max_length=255, unique=True)
+    modules = models.TextField(null=True, blank=True)
+
     class Meta:
-        db_table = 'roles_permission'
+        db_table = "role"
 
     def clean(self):
         super().clean()
-        if self.role_name and RolesPermission.objects.exclude(pk=self.pk).filter(role_name=self.role_name).exists():
+        if self.role_name and Role.objects.exclude(pk=self.pk).filter(role_name=self.role_name).exists():
             raise ValidationError({"role_name": "Role name already exists."})
 
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
-        
+
     def get_modules_list(self):
-        """Return the permissions as a list of module names"""
-        if self.permissions:
-            return [module.strip() for module in self.permissions.split(',')]
+        if self.modules:
+            return [module.strip() for module in self.modules.split(",") if module.strip()]
         return []
 
-""" class User(models.Model):
-    user_id = models.CharField(primary_key=True, max_length=255)
-    employee_id = models.CharField(max_length=255, null=True, blank=True)
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
-    email = models.EmailField(max_length=255, unique=True)
-    password = models.CharField(max_length=255)
-    role = models.ForeignKey(
-        RolesPermission,
+    @property
+    def permissions(self):
+        return self.modules
+
+    @permissions.setter
+    def permissions(self, value):
+        self.modules = value
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        db_column='role_id',
+        related_name="profile",
+    )
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.SET_NULL,
         null=True,
-        blank=True
+        blank=True,
+        related_name="user_profiles",
+        db_column="role_id",
     )
-    status = models.CharField(
-        max_length=10,
-        choices=UserStatus.choices,
-        default=UserStatus.ACTIVE
-    )
-    type = models.CharField(
-        max_length=10,
-        choices=UserType.choices,
-        default=UserType.EMPLOYEE
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        db_table = 'users' """
+        db_table = "user_profile"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        user_model = get_user_model()
+        user_table = user_model._meta.db_table
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f'UPDATE "{user_table}" SET role_id = %s WHERE id = %s',
+                [self.role_id, self.user_id],
+            )
+
+
+RolesPermission = Role

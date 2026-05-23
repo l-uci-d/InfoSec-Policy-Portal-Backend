@@ -39,6 +39,15 @@ def create_update_document(request):
     sections = json.loads(request.data.get('sections'))
     tags = json.loads(request.data.get('tags'))
     pdf_file = request.data.get('pdf_file', None)
+
+    def resolve_user_id(field_name):
+        raw_value = request.data.get(field_name)
+        if raw_value in (None, ""):
+            return None
+        try:
+            return User.objects.get(id=int(raw_value))
+        except (TypeError, ValueError):
+            return None
     
     #handle Document
     new_doc = None
@@ -50,8 +59,8 @@ def create_update_document(request):
 
     new_doc.title = request.data.get('title')
     new_doc.details = request.data.get('details')
-    new_doc.authoredBy = User.objects.get(id=int(request.data.get('authoredBy')))
-    new_doc.reviewedBy = User.objects.get(id=int(request.data.get('reviewedBy')))
+    new_doc.authoredBy = resolve_user_id('authoredBy')
+    new_doc.reviewedBy = resolve_user_id('reviewedBy')
     if pdf_file:
         new_doc.pdf_file = pdf_file
     new_doc.lastReviewed = request.data.get('lastReviewed')
