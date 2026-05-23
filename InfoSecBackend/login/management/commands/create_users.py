@@ -1,6 +1,9 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from uuid import uuid4
+from login.models import RolesPermission
+from login.models import AccessLevel
 
 User = get_user_model()
 
@@ -14,6 +17,11 @@ ROLE_TO_USERS = {
         {"email": "staff2@gmail.com", "password": "password123", "first": "Harley", "last": "Queen", "superuser": False},
         {"email": "staff3@gmail.com", "password": "password123", "first": "Ce", "last": "Ce", "superuser": False},
     ],
+}
+
+DEFAULT_ROLE_MODULES = {
+    "Admin": ["Home", "Documents", "Policies", "RecentNews", "Others", "UserManagement"],
+    "Staff": ["Home", "Documents", "Policies", "RecentNews", "Others"],
 }
 
 class Command(BaseCommand):
@@ -32,6 +40,18 @@ class Command(BaseCommand):
         # Ensure groups exist
         admin_group, _ = Group.objects.get_or_create(name="Admin")
         staff_group, _ = Group.objects.get_or_create(name="Staff")
+
+        for role_name, modules in DEFAULT_ROLE_MODULES.items():
+            role = RolesPermission.objects.filter(role_name=role_name).first()
+            if role is None:
+                role = RolesPermission(
+                    role_id=str(uuid4()),
+                    role_name=role_name,
+                )
+
+            role.permissions = ", ".join(modules)
+            role.access_level = AccessLevel.FULL_ACCESS
+            role.save()
 
         if reset:
             self.stdout.write(self.style.WARNING("Reset requested: deleting all users..."))

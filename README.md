@@ -1,7 +1,6 @@
 # InfoSec Backend Setup
 
 make venv first using requirements.txt:
-
 <br/>
 Steps: 
 
@@ -11,9 +10,11 @@ venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
-
-<br>
-<br>
+## Setup DB:
+```shell
+psql -U infosec_app -d postgres -f psql_infosec_db.sql
+psql -U infosec_app -d infosec_portal -f psql_dummy_data.sql
+```
 
 ## Add Users:
 ```shell

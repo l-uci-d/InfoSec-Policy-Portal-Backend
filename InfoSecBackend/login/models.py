@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 class UserStatus(models.TextChoices):
@@ -25,6 +26,15 @@ class RolesPermission(models.Model):
     
     class Meta:
         db_table = 'roles_permission'
+
+    def clean(self):
+        super().clean()
+        if self.role_name and RolesPermission.objects.exclude(pk=self.pk).filter(role_name=self.role_name).exists():
+            raise ValidationError({"role_name": "Role name already exists."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
         
     def get_modules_list(self):
         """Return the permissions as a list of module names"""
