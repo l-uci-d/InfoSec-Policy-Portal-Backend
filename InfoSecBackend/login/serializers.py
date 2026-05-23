@@ -1,13 +1,14 @@
 # admin/serializers.py
 from rest_framework import serializers
-from .models import User, RolesPermission
+#from .models import User, RolesPermission
+from .models import RolesPermission
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = RolesPermission
         fields = ['role_id', 'role_name', 'description', 'permissions'] #'access_level']
 
-class LoginResponseSerializer(serializers.ModelSerializer):
+""" class LoginResponseSerializer(serializers.ModelSerializer):
     # full_name = serializers.SerializerMethodField()
     # modules = serializers.SerializerMethodField()
     # access_level = serializers.SerializerMethodField()
@@ -42,7 +43,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "role"
-        ]
+        ] """
 
 
 class UserAccessListItemSerializer(serializers.Serializer):

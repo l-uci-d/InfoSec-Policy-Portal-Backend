@@ -365,13 +365,14 @@ def main():
             args=args,
             admin_password=admin_password,
         )
-        run_psql_file(
+        
+        """ run_psql_file(
             psql_exe=psql_exe,
             sql_file=args.dummy_sql,
             database=args.db_name,
             args=args,
             admin_password=admin_password,
-        )
+        ) """
 
     if not args.skip_create_users:
         if not manage_py.exists():

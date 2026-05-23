@@ -42,7 +42,7 @@ class RolesPermission(models.Model):
             return [module.strip() for module in self.permissions.split(',')]
         return []
 
-class User(models.Model):
+""" class User(models.Model):
     user_id = models.CharField(primary_key=True, max_length=255)
     employee_id = models.CharField(max_length=255, null=True, blank=True)
     first_name = models.CharField(max_length=255)
@@ -70,4 +70,4 @@ class User(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        db_table = 'users'
+        db_table = 'users' """
