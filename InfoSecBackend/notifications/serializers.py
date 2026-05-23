@@ -8,4 +8,4 @@ class NotificationSerializer(serializers.ModelSerializer):
         return f"{obj.actor.first_name} {obj.actor.last_name}"
     class Meta:
         model = Notification
-        fields = ['actor', 'action', 'document', 'created_at', 'document_title', 'actor_name']
+        fields = ['actor', 'action', 'document', 'created_at', 'document_title', 'actor_name', 'misc_title']
