@@ -61,8 +61,12 @@ def create_update_document(request):
     new_doc.details = request.data.get('details')
     new_doc.authoredBy = resolve_user_id('authoredBy')
     new_doc.reviewedBy = resolve_user_id('reviewedBy')
+
+    if updating and new_doc.pdf_file and pdf_file:
+        new_doc.pdf_file.delete(save=False)
     if pdf_file:
         new_doc.pdf_file = pdf_file
+        
     new_doc.lastReviewed = request.data.get('lastReviewed')
     new_doc.tags = tags
     new_doc.save()
@@ -98,6 +102,15 @@ def create_update_document(request):
     else:
         create_notif(actor=User.objects.get(id=int(curr_user_id)), action="created", document=new_doc, misc_title=None)
 
+    return Response(status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+def delete_doc(request):
+    target_doc = Document.objects.get(id=int(request.data.get("doc_id")))
+    print("(debug) deleting: ", target_doc)
+    if target_doc.pdf_file:
+        target_doc.pdf_file.delete(save=False)
+    target_doc.delete()
     return Response(status=status.HTTP_200_OK)
 
 @xframe_options_exempt
