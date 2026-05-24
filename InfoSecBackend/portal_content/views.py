@@ -104,9 +104,17 @@ def portal_content_detail(request):
     if pinned_notice_changed:
         actor = request.user if request.user.is_authenticated else None
 
+        title_changed = old_pinned_notice["title"] != new_pinned_notice["title"]
+
+        notif_action = (
+            "published pinned announcement"
+            if title_changed
+            else "updated pinned announcement"
+        )
+
         create_notif(
             actor=actor,
-            action="updated pinned announcement",
+            action=notif_action,
             document=None,
             misc_title=content.pinned_notice_title,
         )
