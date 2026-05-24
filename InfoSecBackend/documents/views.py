@@ -1,5 +1,5 @@
 from .serializers import DocumentSerializer
-from .models import Document, Section, SubSection
+from .models import Document, Section, SubSection, Tag
 from notifications.services import create_notif
 from rest_framework import status
 from rest_framework.response import Response
@@ -23,6 +23,12 @@ def get_documents(request):
     print("(debug) serializer: ")
     print(serializer.data)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def get_tags(request):
+    tags = Tag.objects.all().values("id", "tag_content")
+    print("(debug) tags: ", tags)
+    return Response(tags, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 def get_users(request):
@@ -62,14 +68,21 @@ def create_update_document(request):
     new_doc.authoredBy = resolve_user_id('authoredBy')
     new_doc.reviewedBy = resolve_user_id('reviewedBy')
 
+    old_file = None
+
     if updating and new_doc.pdf_file and pdf_file:
-        new_doc.pdf_file.delete(save=False)
+        old_file = new_doc.pdf_file
     if pdf_file:
         new_doc.pdf_file = pdf_file
         
     new_doc.lastReviewed = request.data.get('lastReviewed')
-    new_doc.tags = tags
+    
     new_doc.save()
+
+    if old_file:
+        old_file.delete(save=False)
+    tag_ids = [tag["id"] for tag in tags]
+    new_doc.tags.set(tag_ids)
 
     #handle Section
     for sect in sections:
