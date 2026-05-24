@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from uuid import uuid4
 from login.models import Role, UserProfile
+from login.module_config import DEFAULT_ROLE_MODULES
 
 User = get_user_model()
 
@@ -15,11 +16,6 @@ ROLE_TO_USERS = {
         {"email": "staff2@gmail.com", "password": "password123", "first": "Harley", "last": "Queen", "superuser": False},
         {"email": "staff3@gmail.com", "password": "password123", "first": "Ce", "last": "Ce", "superuser": False},
     ],
-}
-
-DEFAULT_ROLE_MODULES = {
-    "Admin": ["Home", "Documents", "Policies", "RecentNews", "Others", "UserManagement"],
-    "Staff": ["Home", "Documents", "Policies", "RecentNews", "Others"],
 }
 
 class Command(BaseCommand):

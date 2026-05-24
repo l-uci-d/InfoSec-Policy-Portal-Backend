@@ -12,6 +12,7 @@ from audit_log.models import AuditLog
 from audit_log.middleware import get_client_ip
 import uuid
 import re
+from .module_config import AVAILABLE_MODULES, DEFAULT_ROLE_MODULES
 from .models import Role, UserProfile
 from .serializers import (
     UserAccessListItemSerializer,
@@ -22,11 +23,6 @@ from .serializers import (
     UserRoleBulkUpdateRequestSerializer,
     UserRoleUpdateResultSerializer,
 )
-
-ROLE_TO_MODULES = {
-    "Admin": ["All"],
-    "Staff": ["ViewDocuments"],
-}
 
 DEFAULT_ROLE_NAME = "Staff"
 ADMIN_OVERRIDE_MODULE = "UserManagement" # if in role: {modules}, then considered as admin
@@ -43,13 +39,20 @@ def normalize_module_names(module_names):
     return cleaned_modules
 
 
+def expand_module_names(module_names):
+    modules = normalize_module_names(module_names)
+    if "All" in modules:
+        return AVAILABLE_MODULES.copy()
+    return modules
+
+
 def get_custom_role_modules(role_name):
     role = Role.objects.filter(role_name=role_name).order_by("role_id").first()
     if not role:
         return None
 
     modules = role.get_modules_list()
-    return normalize_module_names(modules)
+    return expand_module_names(modules)
 
 
 def get_modules_for_role(role_name):
@@ -57,7 +60,7 @@ def get_modules_for_role(role_name):
     if custom_modules is not None:
         return custom_modules
 
-    return ROLE_TO_MODULES.get(role_name, [])
+    return DEFAULT_ROLE_MODULES.get(role_name, [])
 
 
 def build_roles_with_modules(role_names):
@@ -109,7 +112,7 @@ def build_user_payload(user):
         "role": {
             "role_id": role.role_id if role else role_name,
             "role_name": role_name,
-            "modules": role.get_modules_list() if role else get_modules_for_role(role_name),
+            "modules": get_modules_for_role(role_name),
         },
     }
 
@@ -277,7 +280,7 @@ class RegisterView(APIView):
 
         staff_role, _ = Role.objects.get_or_create(
             role_name="Staff",
-            defaults={"role_id": str(uuid.uuid4()), "modules": ", ".join(ROLE_TO_MODULES["Staff"])},
+            defaults={"role_id": str(uuid.uuid4()), "modules": ", ".join(DEFAULT_ROLE_MODULES["Staff"])}
         )
         UserProfile.objects.update_or_create(user=user, defaults={"role": staff_role})
 
