@@ -4,7 +4,7 @@ from django.utils.dateformat import format as date_format
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
+from notifications.services import create_notif
 from .models import PortalContent
 
 
@@ -55,6 +55,13 @@ def portal_content_detail(request):
     recent_news = data.get("recentNews", {})
     pinned_notice = recent_news.get("pinnedNotice", {})
 
+    old_pinned_notice = {
+        "category": content.pinned_notice_category,
+        "title": content.pinned_notice_title,
+        "message": content.pinned_notice_message,
+        "author": content.pinned_notice_author,
+    }
+
     content.app_description = home.get("appDescription", content.app_description)
     content.mission = home.get("mission", content.mission)
     content.vision = home.get("vision", content.vision)
@@ -83,14 +90,25 @@ def portal_content_detail(request):
         content.pinned_notice_author,
     )
 
-    updated_by_id = data.get("updatedById")
-    if updated_by_id:
-        User = get_user_model()
-        try:
-            content.updated_by = User.objects.get(id=updated_by_id)
-        except User.DoesNotExist:
-            content.updated_by = None
+    new_pinned_notice = {
+        "category": content.pinned_notice_category,
+        "title": content.pinned_notice_title,
+        "message": content.pinned_notice_message,
+        "author": content.pinned_notice_author,
+    }
+
+    pinned_notice_changed = old_pinned_notice != new_pinned_notice
 
     content.save()
+
+    if pinned_notice_changed:
+        actor = request.user if request.user.is_authenticated else None
+
+        create_notif(
+            actor=actor,
+            action="updated pinned announcement",
+            document=None,
+            misc_title=content.pinned_notice_title,
+        )
 
     return Response(portal_content_to_payload(content), status=status.HTTP_200_OK)
