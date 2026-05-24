@@ -81,6 +81,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+from dotenv import load_dotenv
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / ".env")
+EMAIL_VERIFICATION_DEV_BYPASS = os.getenv("EMAIL_VERIFICATION_DEV_BYPASS", "false").lower() == "true"
+
 ROOT_URLCONF = 'InfoSecBackend.urls'
 
 TEMPLATES = [
@@ -105,7 +113,6 @@ WSGI_APPLICATION = 'InfoSecBackend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-import os
 DATABASES = {
   "default": {
     "ENGINE": "django.db.backends.postgresql",
@@ -119,6 +126,19 @@ DATABASES = {
         },
   }
 }
+
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 # Password validation

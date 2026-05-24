@@ -11,6 +11,8 @@ from .views import (
     UpdateRoleModulesView,
     GetCurrentUserRoleView,
     UpdateUserRolesView,
+    SendEmailCodeView, 
+    VerifyEmailCodeView
 )
 
 urlpatterns = [
@@ -25,4 +27,6 @@ urlpatterns = [
     path("roles/<str:role_name>/permissions/", GetRolePermissionsView.as_view(), name="get_role_permissions"),
     path("users/me/role/", GetCurrentUserRoleView.as_view(), name="get_current_user_role"),
     path("users/roles/", UpdateUserRolesView.as_view(), name="update_user_roles"),
+    path("auth/send-code/", SendEmailCodeView.as_view(), name="send-email-code"),
+    path("auth/verify-code/", VerifyEmailCodeView.as_view(), name="verify-email-code"),
 ]
