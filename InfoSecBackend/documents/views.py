@@ -48,7 +48,7 @@ def create_update_document(request):
             return User.objects.get(id=int(raw_value))
         except (TypeError, ValueError):
             return None
-    
+
     #handle Document
     new_doc = None
     if str(request.data.get('id'))[:3] == 'new':
