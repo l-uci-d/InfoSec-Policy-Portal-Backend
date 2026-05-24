@@ -3,7 +3,7 @@ AVAILABLE_MODULES = [
     "View Documents",
     "Recent News",
     "Create Edit Documents",
-    "Edit Home/News"
+    "Edit Home/News",
     # Insert New Module/s Here
     "User Management",
 ]
