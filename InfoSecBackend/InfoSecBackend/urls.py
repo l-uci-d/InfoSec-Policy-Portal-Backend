@@ -25,7 +25,8 @@ urlpatterns = [
     path("", include("login.urls")),
     path("", include("audit_log.urls")),  
     path("api/", include("notifications.urls")),
-    path("documents/", include("documents.urls"))
+    path("documents/", include("documents.urls")),
+    path("api/", include("portal_content.urls"))
 ]
 # this won't work in prod; serving static files should be handled differently thru prod, and the URLs using the local filesystem should be changed in the prod rendition of code -Harley
 if settings.DEBUG:
