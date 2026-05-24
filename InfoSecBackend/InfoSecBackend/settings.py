@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     ,"login"
     , "audit_log"
     , "documents"
+    , "portal_content"
 ]
 
 MIDDLEWARE = [
