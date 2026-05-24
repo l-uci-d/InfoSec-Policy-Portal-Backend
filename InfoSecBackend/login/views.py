@@ -1,6 +1,12 @@
 import math
 from django.db.models import Count
 
+
+import random
+from django.db.models import Q
+from django.core.cache import cache
+from django.core.mail import send_mail
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -194,6 +200,153 @@ class GetRolePermissionsView(APIView):
 
 User = get_user_model()
 
+
+EMAIL_CODE_TTL_SECONDS = 600
+EMAIL_CODE_COOLDOWN_SECONDS = 60
+
+
+class SendEmailCodeView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        email = (
+            request.data.get("email")
+            or request.query_params.get("email")
+            or ""
+        ).strip().lower()
+
+        purpose = (
+            request.data.get("purpose")
+            or request.query_params.get("purpose")
+            or "register"
+        ).strip().lower()
+
+        if not email:
+            return Response(
+                {"success": False, "message": "Email is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        User = get_user_model()
+
+        if purpose == "register":
+            user_exists = User.objects.filter(
+                Q(email__iexact=email) | Q(username__iexact=email)
+            ).exists()
+
+            if user_exists:
+                return Response(
+                    {
+                        "success": False,
+                        "message": "Email already registered. Login with that email or reset your password.",
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+        if purpose == "reset_password":
+            user_exists = User.objects.filter(
+                Q(email__iexact=email) | Q(username__iexact=email)
+            ).exists()
+
+            if not user_exists:
+                return Response(
+                    {
+                        "success": False,
+                        "message": "No account exists with this email address.",
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            
+        cooldown_key = f"email_code_cooldown:{purpose}:{email}"
+
+        if cache.get(cooldown_key):
+            return Response(
+                {
+                    "success": False,
+                    "message": "Please wait before requesting another code.",
+                    "cooldown_seconds": EMAIL_CODE_COOLDOWN_SECONDS,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        code = str(random.randint(100000, 999999))
+        code_key = f"email_code:{purpose}:{email}"
+
+        cache.set(code_key, code, timeout=EMAIL_CODE_TTL_SECONDS)
+        cache.set(cooldown_key, True, timeout=EMAIL_CODE_COOLDOWN_SECONDS)
+
+        try:
+            send_mail(
+                subject="Your verification code",
+                message=(
+                    f"Your verification code is: {code}\n\n"
+                    "This code will expire in 10 minutes."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Verification code sent.",
+                    "cooldown_seconds": EMAIL_CODE_COOLDOWN_SECONDS,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Failed to send verification code.",
+                    "error": str(e),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class VerifyEmailCodeView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip().lower()
+        code = (request.data.get("code") or "").strip()
+        purpose = (request.data.get("purpose") or "register").strip().lower()
+
+        if not email or not code:
+            return Response(
+                {"success": False, "message": "Email and code are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        code_key = f"email_code:{purpose}:{email}"
+        saved_code = cache.get(code_key)
+
+        if saved_code is None:
+            return Response(
+                {"success": False, "message": "Code expired or not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if str(saved_code) != str(code):
+            return Response(
+                {"success": False, "message": "Invalid code."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cache.delete(code_key)
+        cache.set(f"email_verified:{purpose}:{email}", True, timeout=EMAIL_CODE_TTL_SECONDS)
+
+        return Response(
+            {"success": True, "message": "Email verified successfully."},
+            status=status.HTTP_200_OK,
+        )
+    
+
 class LoginView(APIView):
     authentication_classes = []  # optional: allow unauthenticated
     permission_classes = []      # optional
@@ -267,8 +420,18 @@ class RegisterView(APIView):
         if not re.fullmatch(r"(?=.*[A-Za-z])(?=.*\d).{8,}", password):
             return Response({"success": False, "message": "Password must be at least 8 characters and include letters and numbers"}, status=400)
 
+        User = get_user_model()
         if User.objects.filter(email=email).exists():
             return Response({"success": False, "message": "Email already registered. Login with that email or reset your password"}, status=409)
+        
+        dev_bypass = bool(request.data.get("dev_bypass")) and settings.DEBUG and settings.EMAIL_VERIFICATION_DEV_BYPASS
+        is_verified = cache.get(f"email_verified:register:{email}")
+
+        if not is_verified and not dev_bypass:
+            return Response(
+                {"success": False, "message": "Please verify your email code first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user = User.objects.create_user(
             username=email,
@@ -283,6 +446,8 @@ class RegisterView(APIView):
             defaults={"role_id": str(uuid.uuid4()), "modules": ", ".join(DEFAULT_ROLE_MODULES["Staff"])}
         )
         UserProfile.objects.update_or_create(user=user, defaults={"role": staff_role})
+
+        cache.delete(f"email_verified:register:{email}")
 
         return Response({
             "success": True,
