@@ -125,6 +125,12 @@ def delete_doc(request):
         target_doc.pdf_file.delete(save=False)
     target_doc.delete()
     return Response(status=status.HTTP_200_OK)
+    
+@api_view(['POST'])
+def add_tag(request):
+    new_tag_content = request.data.get('tag_content')
+    Tag.objects.get_or_create(tag_content=new_tag_content)
+    return Response(status=status.HTTP_200_OK)
 
 @xframe_options_exempt
 @api_view(['GET'])

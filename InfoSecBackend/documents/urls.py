@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import get_documents, get_pdf, create_update_document, get_users, delete_doc, get_tags
+from .views import get_documents, get_pdf, create_update_document, get_users, delete_doc, get_tags, add_tag
 
 urlpatterns = [
     path('get-documents/', get_documents, name='get_documents'),
@@ -7,5 +7,6 @@ urlpatterns = [
     path('create-update-doc/', create_update_document, name='create_update_doc'),
     path('get-users/', get_users, name="get_users"),
     path('delete-doc/', delete_doc, name="delete_doc"),
-    path('get-tags/', get_tags, name="get_tags")
+    path('get-tags/', get_tags, name="get_tags"),
+    path('add-tag/', add_tag, name="add_tag")
 ]
