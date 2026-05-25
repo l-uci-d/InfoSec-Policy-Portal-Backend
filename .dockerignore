@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+venv/
+.env/
+__pycache__/
+*.py[cod]
+*.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Uploaded/runtime media should be stored in a Docker volume, not baked into the image.
+InfoSecBackend/files/

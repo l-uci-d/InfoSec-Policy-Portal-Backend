@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: infosec-db
+    environment:
+      POSTGRES_DB: infosec_portal
+      POSTGRES_USER: infosec_app
+      POSTGRES_PASSWORD: admin123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infosec_app -d infosec_portal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: 0lucid0/infosec-backend:1.0.0
+    container_name: infosec-backend
+    env_file:
+      - ./backend/.env.docker
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn InfoSecBackend.wsgi:application --bind 0.0.0.0:8000 --workers 1 --timeout 120"
+
+  frontend:
+    image: 0lucid0/infosec-frontend:1.0.0
+    container_name: infosec-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+
+
+
+# Then Run:
+# docker compose pull
+# docker compose up -d

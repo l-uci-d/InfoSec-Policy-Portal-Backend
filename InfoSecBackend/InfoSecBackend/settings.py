@@ -11,9 +11,16 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / ".env")
+
+def csv_env(name, default=""):
+    return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = '/files/'
 MEDIA_ROOT = BASE_DIR / 'files'
 
@@ -22,20 +29,15 @@ MEDIA_ROOT = BASE_DIR / 'files'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#+e^6#(xnkygth_o+24a&!9!&i29p=+b2yub_bl=_bhw6mxh*0'
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-only-change-me")
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+ALLOWED_HOSTS = csv_env("ALLOWED_HOSTS", "localhost,127.0.0.1,backend")
 
-ALLOWED_HOSTS = ["*"]
-
-
-CSRF_TRUSTED_ORIGINS = [
-    "http://*",
-    "https://*",
-    "http://localhost:5173"
-]
+CSRF_TRUSTED_ORIGINS = csv_env(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000",
+)
 
 # Application definition
 
@@ -59,6 +61,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -68,12 +71,10 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOWED_ORIGINS = csv_env(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173",
+)
 CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
@@ -82,9 +83,6 @@ REST_FRAMEWORK = {
     ),
 }
 
-from dotenv import load_dotenv
-import os
-from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent / ".env")
@@ -115,17 +113,15 @@ WSGI_APPLICATION = 'InfoSecBackend.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-  "default": {
-    "ENGINE": "django.db.backends.postgresql",
-    "NAME": "infosec_portal",
-    "USER": "infosec_app",
-    "PASSWORD": "admin123",
-    "HOST": "127.0.0.1",
-    "PORT": "5432",
-    'OPTIONS': {
-            'options': '-c search_path=public'
-        },
-  }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "infosec_portal"),
+        "USER": os.getenv("DB_USER", "infosec_app"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "admin123"),
+        "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+        "OPTIONS": {"options": "-c search_path=public"},
+    }
 }
 
 
@@ -177,6 +173,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
