@@ -277,15 +277,101 @@ class SendEmailCodeView(APIView):
         cache.set(cooldown_key, True, timeout=EMAIL_CODE_COOLDOWN_SECONDS)
 
         try:
+            plain_message = (
+                f"Your InfoSec Portal verification code is: {code}\n\n"
+                "This code will expire in 10 minutes.\n\n"
+                "If you did not request this code, you can safely ignore this email."
+            )
+
+            html_message = f"""
+            <div style="
+                font-family: Arial, sans-serif;
+                background-color: #f4f7fb;
+                padding: 32px;
+                color: #1f2937;
+            ">
+                <div style="
+                    max-width: 520px;
+                    margin: 0 auto;
+                    background: #ffffff;
+                    border-radius: 12px;
+                    padding: 32px;
+                    border: 1px solid #e5e7eb;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                ">
+                    <h2 style="
+                        margin: 0 0 12px;
+                        color: #1b3b6f;
+                        font-size: 22px;
+                    ">
+                        InfoSec Portal Verification
+                    </h2>
+
+                    <p style="
+                        margin: 0 0 20px;
+                        font-size: 15px;
+                        line-height: 1.6;
+                        color: #4b5563;
+                    ">
+                        Use the verification code below to continue your registration.
+                    </p>
+
+                    <div style="
+                        text-align: center;
+                        margin: 28px 0;
+                    ">
+                        <div style="
+                            display: inline-block;
+                            letter-spacing: 8px;
+                            font-size: 32px;
+                            font-weight: bold;
+                            color: #1b3b6f;
+                            background: #eef4ff;
+                            border: 1px solid #c7d8f5;
+                            border-radius: 10px;
+                            padding: 16px 24px;
+                        ">
+                            {code}
+                        </div>
+                    </div>
+
+                    <p style="
+                        margin: 0 0 12px;
+                        font-size: 14px;
+                        line-height: 1.6;
+                        color: #4b5563;
+                    ">
+                        This code will expire in <strong>10 minutes</strong>.
+                    </p>
+
+                    <p style="
+                        margin: 0;
+                        font-size: 13px;
+                        line-height: 1.6;
+                        color: #6b7280;
+                    ">
+                        If you did not request this code, you can safely ignore this email.
+                    </p>
+                </div>
+
+                <p style="
+                    text-align: center;
+                    margin-top: 18px;
+                    font-size: 12px;
+                    color: #9ca3af;
+                ">
+                    This is an automated message from the InfoSec Portal.
+                </p>
+            </div>
+            """
+
             send_mail(
-                subject="Your verification code",
-                message=(
-                    f"Your verification code is: {code}\n\n"
-                    "This code will expire in 10 minutes."
-                ),
+                subject="Your InfoSec Portal verification code",
+                message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
                 fail_silently=False,
+                html_message=html_message,
             )
 
             return Response(
