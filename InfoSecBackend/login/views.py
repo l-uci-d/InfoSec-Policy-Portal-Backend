@@ -277,8 +277,29 @@ class SendEmailCodeView(APIView):
         cache.set(cooldown_key, True, timeout=EMAIL_CODE_COOLDOWN_SECONDS)
 
         try:
+            is_password_reset = purpose == "reset_password"
+
+            email_subject = (
+                "Reset your InfoSec Portal password"
+                if is_password_reset
+                else "Verify your InfoSec Portal account"
+            )
+
+            email_heading = (
+                "Password Reset Verification"
+                if is_password_reset
+                else "InfoSec Portal Verification"
+            )
+
+            email_intro = (
+                "Use the verification code below to reset your InfoSec Portal password."
+                if is_password_reset
+                else "Use the verification code below to continue your registration."
+            )
+
             plain_message = (
                 f"Your InfoSec Portal verification code is: {code}\n\n"
+                f"{email_intro}\n\n"
                 "This code will expire in 10 minutes.\n\n"
                 "If you did not request this code, you can safely ignore this email."
             )
@@ -304,7 +325,7 @@ class SendEmailCodeView(APIView):
                         color: #1b3b6f;
                         font-size: 22px;
                     ">
-                        InfoSec Portal Verification
+                        {email_heading}
                     </h2>
 
                     <p style="
@@ -313,7 +334,7 @@ class SendEmailCodeView(APIView):
                         line-height: 1.6;
                         color: #4b5563;
                     ">
-                        Use the verification code below to continue your registration.
+                        {email_intro}
                     </p>
 
                     <div style="
@@ -366,7 +387,7 @@ class SendEmailCodeView(APIView):
             """
 
             send_mail(
-                subject="Your InfoSec Portal verification code",
+                subject=email_subject,
                 message=plain_message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
