@@ -93,7 +93,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "Reset/create the local PostgreSQL database for InfoSec Portal using "
-            "the public schema, then optionally run Django migrations and seed SQL data."
+            "the public schema, then optionally run Django migrations, load the schema SQL file, and create demo users."
         )
     )
 
@@ -146,11 +146,6 @@ def main():
         help="Path to psql_infosec_db.sql.",
     )
     parser.add_argument(
-        "--dummy-sql",
-        default=os.getenv("DUMMY_SQL", str(BASE_DIR / "psql_dummy_data.sql")),
-        help="Path to psql_dummy_data.sql.",
-    )
-    parser.add_argument(
         "--psql-path",
         default=os.getenv("PSQL_PATH", "psql"),
         help="Path to the psql executable if it is not available in PATH.",
@@ -163,12 +158,12 @@ def main():
     parser.add_argument(
         "--skip-sql",
         action="store_true",
-        help="Do not load psql_infosec_db.sql and psql_dummy_data.sql.",
+        help="Do not load psql_infosec_db.sql."
     )
     parser.add_argument(
-        "--skip-create-users",
+        "--create-users",
         action="store_true",
-        help="Do not run python manage.py create_users --reset.",
+        help="Run python manage.py create_users --reset to create/reset demo login users.",
     )
 
     args = parser.parse_args()
@@ -365,16 +360,9 @@ def main():
             args=args,
             admin_password=admin_password,
         )
-        
-        """ run_psql_file(
-            psql_exe=psql_exe,
-            sql_file=args.dummy_sql,
-            database=args.db_name,
-            args=args,
-            admin_password=admin_password,
-        ) """
 
-    if not args.skip_create_users:
+
+    if args.create_users:
         if not manage_py.exists():
             print(f"manage.py not found: {manage_py}")
             print("Use --backend-dir to point to the folder containing manage.py.")
